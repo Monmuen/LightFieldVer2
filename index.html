@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Light Field Renderer With Left/Right View</title>
+  <style type="text/css">
+body {
+  overflow: hidden;
+  margin: 0;
+  position: relative;
+}
+
+.controls {
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  padding: 2rem;
+  color: #fff;
+  text-shadow: 2px 2px 2px black;
+  font-family: sans-serif;
+  max-width: 280px;
+  z-index: 2;
+  display: none; /* Initially hidden */
+}
+
+.controls div {
+  text-align: right;
+  margin-bottom: 1rem;
+}
+
+input[type=range] {
+  width: 200px;
+}
+
+a {
+  color: #999;
+}
+
+a:visted {
+  color: #666;
+}
+
+#load-wrap {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  z-index: 3;
+}
+
+#button-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+button {
+  margin: 0.8rem 0;
+  font-size: 2rem;
+}
+#back-button{
+  font-size: 1rem;
+  margin: 0.3rem 0;
+}
+#gyro-button{
+  font-size: 1rem;
+  margin: 0.3rem 0;
+}
+#reset-button{
+  font-size: 1rem;
+  margin: 0.3rem 0;
+}
+#load {
+  padding: 1rem;
+  font-size: 2rem;
+  cursor: pointer;
+  z-index: 4;
+}
+
+#progress-container {
+  margin-top: 1rem;
+  font-size: 1.5rem;
+  color: #fff;
+  display: none; /* Initially hidden */
+}
+
+#videosrc {
+  position: absolute;
+  left: 0;
+  top: 0;
+  z-index: 0;
+}
+
+video {
+  position: absolute;
+  right: 0;
+  top: 0;
+}
+</style>
+</head>
+<body>
+  <div id="load-wrap">
+    <div id="button-container">
+      <button id="amethyst">Amethyst</button>
+      <button id="legoKnights">Lego Knights</button>
+      <button id="legoTruck">Lego Truck</button>
+      <button id="theStanfordBunny">The Stanford Bunny</button>
+      <button id="tarotCardsAndCrystalBall">Tarot Cards And Crystal Ball</button>
+    </div>
+    <div id="progress-container">Loading: <span id="progress">0%</span></div>
+  </div>
+  <div class='controls'>
+    <div>
+      <label for='aperture'>Aperture</label>
+      <input type='range' min='0' max='10' step='0.1' id='aperture' />
+    </div>
+    <div>
+      <label for='focus'>Focus</label>
+      <input type='range' min='-0.01' max='0.01' step='0.001' id='focus' />
+    </div>
+    <div>
+      <button id='gyro-button'>Control Mode Toggle</button>
+    </div>   
+    <div>
+      <button id='reset-button'>Reset the position</button>
+    </div>
+    <div>
+      <label for="stplane">Show ST Plane</label>
+      <input type="checkbox" id="stplane" />
+    </div>
+    <div>
+      <button id='back-button'>Back</button>
+    </div>
+    
+  </div>
+  <script src="app5.js" type="module"></script>
+  <script src="https://unpkg.com/vconsole@latest/dist/vconsole.min.js"></script>
+  <script src="https://unpkg.com/three@0.132.2/build/three.js"></script>
+  <script src="https://unpkg.com/three-mesh-ui@6.4.1/build/three-mesh-ui.js"></script>
+</body>
+</html>

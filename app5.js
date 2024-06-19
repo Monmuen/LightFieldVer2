@@ -1,10 +1,10 @@
+
 import * as THREENEW from './vendor/three.js';
 import * as THREE from './vendor/three.module.js';
 import { OrbitControls } from './vendor/OrbitControls.js';
 import { StereoEffect } from './vendor/StereoEffects.js';
 import { VRButton } from './vendor/VRButton.js';
 import ThreeMeshUI from 'https://cdn.skypack.dev/three-mesh-ui';
-
 import { XRControllerModelFactory } from './vendor/XRControllerModelFactory.js';
 
 const controllerModelFactory = new XRControllerModelFactory();
@@ -163,7 +163,7 @@ async function loadLightField(sceneName, resolutionX, resolutionY) {
   progressContainer.style.display = 'block'; // Show progress
   await loadShaders();
   initPlaneMaterial();
-  await extractImages(sceneName);
+  await extractVideo(sceneName);
   loadPlane();
   console.log('Plane Geometry:', plane.geometry);
   console.log('Plane Material:', plane.material);
@@ -208,49 +208,61 @@ function loadPlane() {
   console.log('Loaded plane');
 }
 
-async function extractImages(sceneName) {
-  const loader = new THREE.ImageLoader();
-  const images = [];
-  const numFrames = camsX * camsY;
-  let loadedCount = 0;
+async function extractVideo(sceneName) {
+  const video = document.createElement('video');
+  const canvas = document.createElement('canvas');
+  const ctx = canvas.getContext('2d');
   const progressElement = document.getElementById('progress');
 
-  for (let i = 0; i < numFrames; i++) {
-    const imageUrl = `./${sceneName}/frame${i + 1}.png`;
-    await new Promise((resolve, reject) => {
-      loader.load(imageUrl, (image) => {
-        images[i] = image;
-        loadedCount++;
-        const progress = Math.round((loadedCount / numFrames) * 100);
-        progressElement.textContent = `${progress}%`;
-        resolve();
-      }, undefined, reject);
-    });
-  }
-
-  loadWrap.style.display = 'none';
-
-  const canvas = document.createElement('canvas');
   canvas.width = resX;
   canvas.height = resY;
-  const ctx = canvas.getContext('2d');
-  const imageDataArray = new Uint8Array(resX * resY * 4 * numFrames);
+  canvas.setAttribute('id', 'videosrc');
+  video.src = `./${sceneName}/${sceneName}.mp4`;
+  let seekResolve;
+  let count = 0;
+  let offset = 0;
+  const allBuffer = new Uint8Array(resX * resY * 4 * camsX * camsY);
 
-  for (let i = 0; i < numFrames; i++) {
-    ctx.clearRect(0, 0, resX, resY);
-    ctx.drawImage(images[i], 0, 0, resX, resY);
-    const imageData = ctx.getImageData(0, 0, resX, resY);
-    imageDataArray.set(imageData.data, i * resX * resY * 4);
-  }
+  console.log('starting extraction');
 
-  fieldTexture = new THREE.DataTexture2DArray(imageDataArray, resX, resY, numFrames);
-  fieldTexture.needsUpdate = true;
-  planeMat.uniforms.field.value = fieldTexture;
+  const getBufferFromVideo = () => {
+    ctx.drawImage(video, 0, 0, resX, resY);
+    const imgData = ctx.getImageData(0, 0, resX, resY);
+    allBuffer.set(imgData.data, offset);
+    offset += imgData.data.byteLength;
+    count++;
+    progressElement.textContent = `Loaded ${Math.round(100 * count / (camsX * camsY))}%`;
+  };
 
-  console.log('Loaded images for', sceneName);
-  console.log('Resolution:', resX, resY);
-  controlsDiv.style.display = 'block'; // Show controls
-  loadWrap.style.display = 'none'; // Hide load wrap
+  const fetchFrames = async () => {
+    let currentTime = 0;
+
+    while (count < camsX * camsY) {
+      getBufferFromVideo();
+      currentTime += 0.0333;
+      video.currentTime = currentTime;
+      await new Promise(res => (seekResolve = res));
+    }
+
+    loadWrap.style.display = 'none';
+
+    fieldTexture = new THREE.DataTexture2DArray(allBuffer, resX, resY, camsX * camsY);
+    console.log('Loaded field data');
+
+    planeMat.uniforms.field.value = fieldTexture;
+    fieldTexture.needsUpdate = true;
+  };
+
+  video.addEventListener('seeked', async function () {
+    if (seekResolve) seekResolve();
+  });
+
+  video.addEventListener('loadeddata', async () => {
+    await fetchFrames();
+    console.log('loaded data');
+    controlsDiv.style.display = 'block'; // Show controls
+    loadWrap.style.display = 'none'; // Hide load wrap 
+  });
 }
 
 function animate() {
@@ -507,6 +519,3 @@ function handleController(controller) {
 
   line.visible = true;
 }
-
-
-

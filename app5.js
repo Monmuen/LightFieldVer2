@@ -215,7 +215,7 @@ async function extractVideo(sceneName) {
     const canvas = document.createElement('canvas');
     const ctx = canvas.getContext('2d');
     const progressElement = document.getElementById('progress');
-    let filesrc = `https://monmuen.xyz/${sceneName}/${sceneName}.mp4`;
+    let filesrc = `https://monmuen.xyz/${sceneName}/${sceneName}1.mp4`;
     console.log(`Video source set to: ${filesrc}`);
     canvas.width = resX;
     canvas.height = resY;

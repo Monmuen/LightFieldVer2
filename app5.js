@@ -215,6 +215,7 @@ async function extractVideo(sceneName) {
     const ctx = canvas.getContext('2d');
     const progressElement = document.getElementById('progress');
     let filesrc = `./${sceneName}/${sceneName}.mp4`;
+    console.log(`Video source set to: ${filesrc}`);
     canvas.width = resX;
     canvas.height = resY;
     canvas.setAttribute('id', 'videosrc');
@@ -255,20 +256,28 @@ async function extractVideo(sceneName) {
 
     video.addEventListener('seeked', async function () {
       if (seekResolve) seekResolve();
+      console.log('Video seeked');
     });
 
     video.addEventListener('loadeddata', async () => {
+      console.log('Video loadeddata event triggered');
       await fetchFrames();
       console.log('loaded data');
       controlsDiv.style.display = 'block'; // Show controls
       loadWrap.style.display = 'none'; // Hide load wrap 
     });
 
+    // Adding video to the DOM to ensure it loads
+    document.body.appendChild(video);
+    video.load(); // Ensures the video starts loading
+    console.log('Video element added to DOM and load called');
+
   } catch (error) {
     console.error('Error extracting video:', error);
     alert('An error occurred while extracting video.');
   }
 }
+
 
 
 function animate() {

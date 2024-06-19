@@ -1,4 +1,3 @@
-
 import * as THREENEW from './vendor/three.js';
 import * as THREE from './vendor/three.module.js';
 import { OrbitControls } from './vendor/OrbitControls.js';

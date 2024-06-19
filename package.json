@@ -1,0 +1,18 @@
+{
+  "name": "lf-2021",
+  "version": "1.0.0",
+  "description": "trying a light field renderer again",
+  "main": "app.js",
+  "author": "Duncan Alexander <duncan@hypothete.com>",
+  "license": "MIT",
+  "dependencies": {
+    "@vercel/speed-insights": "^1.0.12",
+    "three": "^0.125.2"
+  },
+  "scripts": {
+    "start": "http-server"
+  },
+  "devDependencies": {
+    "http-server": "^0.12.3"
+  }
+}

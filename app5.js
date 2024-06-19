@@ -211,15 +211,21 @@ function loadPlane() {
 async function extractVideo(sceneName) {
   try {
     const video = document.createElement('video');
+    video.crossOrigin = 'anonymous'; // 处理跨域问题
     const canvas = document.createElement('canvas');
     const ctx = canvas.getContext('2d');
     const progressElement = document.getElementById('progress');
-    let filesrc = `./${sceneName}/${sceneName}.mp4`;
+    let filesrc = `https://monmuen.xyz/${sceneName}/${sceneName}.mp4`;
     console.log(`Video source set to: ${filesrc}`);
     canvas.width = resX;
     canvas.height = resY;
     canvas.setAttribute('id', 'videosrc');
     video.src = filesrc;
+
+    video.addEventListener('error', (e) => {
+      console.error('Error loading video:', e);
+      alert('Error loading video.');
+    });
 
     let seekResolve;
     let count = 0;
@@ -267,9 +273,8 @@ async function extractVideo(sceneName) {
       loadWrap.style.display = 'none'; // Hide load wrap 
     });
 
-    // Adding video to the DOM to ensure it loads
     document.body.appendChild(video);
-    video.load(); // Ensures the video starts loading
+    video.load();
     console.log('Video element added to DOM and load called');
 
   } catch (error) {
@@ -277,7 +282,6 @@ async function extractVideo(sceneName) {
     alert('An error occurred while extracting video.');
   }
 }
-
 
 
 function animate() {

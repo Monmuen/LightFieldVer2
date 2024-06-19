@@ -222,9 +222,29 @@ async function extractVideo(sceneName) {
     canvas.setAttribute('id', 'videosrc');
     video.src = filesrc;
 
+    // 更详细的错误信息
     video.addEventListener('error', (e) => {
-      console.error('Error loading video:', e);
-      alert('Error loading video.');
+      const error = e.currentTarget.error;
+      let errorMessage = 'Unknown error';
+      switch (error.code) {
+        case error.MEDIA_ERR_ABORTED:
+          errorMessage = 'You aborted the video playback.';
+          break;
+        case error.MEDIA_ERR_NETWORK:
+          errorMessage = 'A network error caused the video download to fail part-way.';
+          break;
+        case error.MEDIA_ERR_DECODE:
+          errorMessage = 'The video playback was aborted due to a corruption problem or because the video used features your browser did not support.';
+          break;
+        case error.MEDIA_ERR_SRC_NOT_SUPPORTED:
+          errorMessage = 'The video could not be loaded, either because the server or network failed or because the format is not supported.';
+          break;
+        default:
+          errorMessage = 'An unknown error occurred.';
+          break;
+      }
+      console.error('Error loading video:', errorMessage);
+      alert(`Error loading video: ${errorMessage}`);
     });
 
     let seekResolve;
@@ -272,6 +292,17 @@ async function extractVideo(sceneName) {
       controlsDiv.style.display = 'block'; // Show controls
       loadWrap.style.display = 'none'; // Hide load wrap 
     });
+
+    // 添加更多事件监听器以捕捉所有视频加载事件
+    video.addEventListener('loadstart', () => console.log('Video loadstart event triggered'));
+    video.addEventListener('progress', () => console.log('Video progress event triggered'));
+    video.addEventListener('suspend', () => console.log('Video suspend event triggered'));
+    video.addEventListener('abort', () => console.log('Video abort event triggered'));
+    video.addEventListener('emptied', () => console.log('Video emptied event triggered'));
+    video.addEventListener('stalled', () => console.log('Video stalled event triggered'));
+    video.addEventListener('loadedmetadata', () => console.log('Video loadedmetadata event triggered'));
+    video.addEventListener('canplay', () => console.log('Video canplay event triggered'));
+    video.addEventListener('canplaythrough', () => console.log('Video canplaythrough event triggered'));
 
     document.body.appendChild(video);
     video.load();

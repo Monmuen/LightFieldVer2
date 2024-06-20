@@ -322,11 +322,11 @@ function animate() {
 let initialOrientation = null;
 
 function initDeviceOrientationControls() {
-  window.addEventListener('deviceorientation', handleDeviceOrientation);
+  window.addEventListener('deviceorientation', handleDeviceOrientation, true);
 }
 
 function disableDeviceOrientationControls() {
-  window.removeEventListener('deviceorientation', handleDeviceOrientation);
+  window.removeEventListener('deviceorientation', handleDeviceOrientation, true);
   initialOrientation = null;
 }
 
@@ -347,10 +347,11 @@ function updateCameraOrientation(alpha, beta, gamma) {
   const betaOffset = initialOrientation ? beta - initialOrientation.beta : 0;
   const gammaOffset = initialOrientation ? gamma - initialOrientation.gamma : 0;
 
-  const euler = new THREE.Euler(alphaOffset,betaOffset,-gammaOffset, 'YXZ');
+  const euler = new THREE.Euler(betaOffset, gammaOffset, alphaOffset, 'YXZ');
   gyroCamera.quaternion.setFromEuler(euler);
   gyroCamera.updateMatrixWorld(true);
 }
+
 
 
 // VR模式UI部分

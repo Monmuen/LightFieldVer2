@@ -211,18 +211,57 @@ function loadPlane() {
 async function extractVideo(sceneName) {
   try {
     const video = document.createElement('video');
-    video.crossOrigin = 'anonymous'; // 处理跨域问题
     const canvas = document.createElement('canvas');
     const ctx = canvas.getContext('2d');
     const progressElement = document.getElementById('progress');
-    let filesrc = `https://monmuen.xyz/${sceneName}1.mp4`;
-    console.log(`Video source set to: ${filesrc}`);
+    let filesrc = `./${sceneName}/${sceneName}.mp4`;
     canvas.width = resX;
     canvas.height = resY;
     canvas.setAttribute('id', 'videosrc');
     video.src = filesrc;
+    video.muted = true;
 
-    // 更详细的错误信息
+    let count = 0;
+    let offset = 0;
+    const allBuffer = new Uint8Array(resX * resY * 4 * camsX * camsY);
+
+    const processFrame = () => {
+      ctx.drawImage(video, 0, 0, resX, resY);
+      const imgData = ctx.getImageData(0, 0, resX, resY);
+      allBuffer.set(imgData.data, offset);
+      offset += imgData.data.byteLength;
+      count++;
+      progressElement.textContent = `Loaded ${Math.round(100 * count / (camsX * camsY))}%`;
+    };
+
+    const handleVideoFrame = async () => {
+      while (count < camsX * camsY) {
+        await new Promise((resolve, reject) => {
+          video.onseeked = () => {
+            processFrame();
+            resolve();
+          };
+          video.currentTime += 0.0333; // Assuming 30 FPS video
+        });
+      }
+
+      loadWrap.style.display = 'none';
+
+      fieldTexture = new THREE.DataTexture2DArray(allBuffer, resX, resY, camsX * camsY);
+      console.log('Loaded field data');
+
+      planeMat.uniforms.field.value = fieldTexture;
+      fieldTexture.needsUpdate = true;
+
+      controlsDiv.style.display = 'block'; // Show controls
+      loadWrap.style.display = 'none'; // Hide load wrap 
+    };
+
+    video.addEventListener('loadeddata', async () => {
+      console.log('Video loaded data, starting frame extraction');
+      await handleVideoFrame();
+    });
+
     video.addEventListener('error', (e) => {
       const error = e.currentTarget.error;
       let errorMessage = 'Unknown error';
@@ -247,72 +286,12 @@ async function extractVideo(sceneName) {
       alert(`Error loading video: ${errorMessage}`);
     });
 
-    let seekResolve;
-    let count = 0;
-    let offset = 0;
-    const allBuffer = new Uint8Array(resX * resY * 4 * camsX * camsY);
-
-    const getBufferFromVideo = () => {
-      ctx.drawImage(video, 0, 0, resX, resY);
-      const imgData = ctx.getImageData(0, 0, resX, resY);
-      allBuffer.set(imgData.data, offset);
-      offset += imgData.data.byteLength;
-      count++;
-      progressElement.textContent = `Loaded ${Math.round(100 * count / (camsX * camsY))}%`;
-    };
-
-    const fetchFrames = async () => {
-      let currentTime = 0;
-
-      while (count < camsX * camsY) {
-        getBufferFromVideo();
-        currentTime += 0.0333;
-        video.currentTime = currentTime;
-        await new Promise(res => (seekResolve = res));
-      }
-
-      loadWrap.style.display = 'none';
-
-      fieldTexture = new THREE.DataTexture2DArray(allBuffer, resX, resY, camsX * camsY);
-      console.log('Loaded field data');
-
-      planeMat.uniforms.field.value = fieldTexture;
-      fieldTexture.needsUpdate = true;
-    };
-
-    video.addEventListener('seeked', async function () {
-      if (seekResolve) seekResolve();
-      console.log('Video seeked');
-    });
-
-    video.addEventListener('loadeddata', async () => {
-      console.log('Video loadeddata event triggered');
-      await fetchFrames();
-      console.log('loaded data');
-      controlsDiv.style.display = 'block'; // Show controls
-      loadWrap.style.display = 'none'; // Hide load wrap 
-    });
-
-    // 添加更多事件监听器以捕捉所有视频加载事件
-    video.addEventListener('loadstart', () => console.log('Video loadstart event triggered'));
-    video.addEventListener('progress', () => console.log('Video progress event triggered'));
-    video.addEventListener('suspend', () => console.log('Video suspend event triggered'));
-    video.addEventListener('abort', () => console.log('Video abort event triggered'));
-    video.addEventListener('emptied', () => console.log('Video emptied event triggered'));
-    video.addEventListener('stalled', () => console.log('Video stalled event triggered'));
-    video.addEventListener('loadedmetadata', () => console.log('Video loadedmetadata event triggered'));
-    video.addEventListener('canplay', () => console.log('Video canplay event triggered'));
-    video.addEventListener('canplaythrough', () => console.log('Video canplaythrough event triggered'));
-
-    document.body.appendChild(video);
-    video.load();
-    console.log('Video element added to DOM and load called');
-
   } catch (error) {
     console.error('Error extracting video:', error);
     alert('An error occurred while extracting video.');
   }
 }
+
 
 
 function animate() {

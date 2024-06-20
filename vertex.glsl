@@ -1,6 +1,7 @@
-out vec2 vSt;
-out vec2 vUv;
+varying vec2 vSt;
+varying vec2 vUv;
 uniform float imageAspect; // new added
+
 void main() {
   vec3 posToCam = cameraPosition - position;
   vec3 nDir = normalize(posToCam);

@@ -1,13 +1,14 @@
 precision highp float;
 precision highp int;
+precision highp sampler2DArray;
 
-uniform sampler2D field[NUM_TEXTURES]; // Define NUM_TEXTURES appropriately
+uniform sampler2DArray field;
 uniform vec2 camArraySize;
 uniform float aperture;
 uniform float focus;
 
-varying vec2 vSt;
-varying vec2 vUv;
+in vec2 vSt;
+in vec2 vUv;
 
 void main() {
   vec4 color = vec4(0.0);
@@ -23,9 +24,9 @@ void main() {
       float dy = j - (vSt.y * camArraySize.y - 0.5);
       float sqDist = dx * dx + dy * dy;
       if (sqDist < aperture) {
-        int camOff = int(i + camArraySize.x * j);
+        float camOff = i + camArraySize.x * j;
         vec2 focOff = vec2(dx, dy) * focus;
-        color += texture2D(field[camOff], vUv + focOff);
+        color += texture(field, vec3(vUv + focOff, camOff));
         colorCount++;
       }
     }

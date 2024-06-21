@@ -319,6 +319,17 @@ function animate() {
   });
 }
 
+let initialOrientation = null;
+
+function initDeviceOrientationControls() {
+  window.addEventListener('deviceorientation', handleDeviceOrientation, true);
+}
+
+function disableDeviceOrientationControls() {
+  window.removeEventListener('deviceorientation', handleDeviceOrientation, true);
+  initialOrientation = null;
+}
+
 function handleDeviceOrientation(event) {
   const alpha = event.alpha ? THREE.MathUtils.degToRad(event.alpha) : 0;
   const beta = event.beta ? THREE.MathUtils.degToRad(event.beta) : 0;
@@ -347,7 +358,6 @@ function updateCameraOrientation(alpha, beta, gamma) {
   gyroCamera.quaternion.setFromEuler(euler);
   gyroCamera.updateMatrixWorld(true);
 }
-
 
 
 

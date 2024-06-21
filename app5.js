@@ -336,21 +336,29 @@ function handleDeviceOrientation(event) {
   const gamma = event.gamma ? THREE.MathUtils.degToRad(event.gamma) : 0;
 
   if (!initialOrientation) {
-    initialOrientation = { alpha, beta, gamma };
+    // 根据手机初始方向调整初始方向的基准
+    initialOrientation = {
+      alpha: alpha - 90,  // 初始 alpha 角度为手机当前 alpha - 90 度
+      beta: beta,
+      gamma: gamma + 90   // 初始 gamma 角度为手机当前 gamma + 90 度
+    };
   }
 
   updateCameraOrientation(alpha, beta, gamma);
 }
 
 function updateCameraOrientation(alpha, beta, gamma) {
-  const alphaOffset = initialOrientation ? alpha - initialOrientation.alpha : 0;
-  const betaOffset = initialOrientation ? beta - initialOrientation.beta : 0;
-  const gammaOffset = initialOrientation ? gamma - initialOrientation.gamma : 0;
+  if (!initialOrientation) return;
+
+  const alphaOffset = alpha - initialOrientation.alpha;
+  const betaOffset = beta - initialOrientation.beta;
+  const gammaOffset = gamma - initialOrientation.gamma;
 
   const euler = new THREE.Euler(betaOffset, gammaOffset, alphaOffset, 'YXZ');
   gyroCamera.quaternion.setFromEuler(euler);
   gyroCamera.updateMatrixWorld(true);
 }
+
 
 
 

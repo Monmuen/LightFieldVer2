@@ -457,27 +457,27 @@ uiContainer.add(
   })
 );
 
-const raycaster = new THREE.Raycaster();
+// const raycaster = new THREE.Raycaster();
 
-const controllers = [];
+// const controllers = [];
 
-function initControllers() {
-  for (let i = 0; i <= 1; i++) {
-    const controller = renderer.xr.getController(i);
-    scene.add(controller);
-    controllers.push(controller);
+// function initControllers() {
+//   for (let i = 0; i <= 1; i++) {
+//     const controller = renderer.xr.getController(i);
+//     scene.add(controller);
+//     controllers.push(controller);
 
-    const controllerModel = controllerModelFactory.createControllerModel(controller);
-    controller.add(controllerModel);
+//     const controllerModel = controllerModelFactory.createControllerModel(controller);
+//     controller.add(controllerModel);
 
-    const geometry = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(0, 0, 0), new THREE.Vector3(0, 0, -1)]);
-    const line = new THREE.Line(geometry);
-    line.name = 'line';
-    line.scale.z = 5;
-    controller.add(line);
-  }
-}
-initControllers();
+//     const geometry = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(0, 0, 0), new THREE.Vector3(0, 0, -1)]);
+//     const line = new THREE.Line(geometry);
+//     line.name = 'line';
+//     line.scale.z = 5;
+//     controller.add(line);
+//   }
+// }
+// initControllers();
 
 renderer.xr.addEventListener('sessionstart', () => {
   isVRPresenting = true;
@@ -486,10 +486,10 @@ renderer.xr.addEventListener('sessionstart', () => {
   planePts.position.set(0, 1.6, -2.01);
   plane.updateMatrix();
   uiContainer.visible = true;
-  controllers.forEach(controller => {
-    controller.addEventListener('selectstart', onSelectStart);
-    controller.addEventListener('selectend', onSelectEnd);
-  });
+  // controllers.forEach(controller => {
+  //   controller.addEventListener('selectstart', onSelectStart);
+  //   controller.addEventListener('selectend', onSelectEnd);
+  // });
   console.log('Plane position set to:', plane.position);
   console.log('PlanePts position set to:', planePts.position);
 });
@@ -498,9 +498,9 @@ renderer.xr.addEventListener('sessionend', () => {
   isVRPresenting = false;
   scene.position.set(0,0,0);
   uiContainer.visible = false;
-  controllers.forEach(controller => {
-    controller.removeEventListener('selectstart', onSelectStart);
-    controller.removeEventListener('selectend', onSelectEnd);
+  // controllers.forEach(controller => {
+  //   controller.removeEventListener('selectstart', onSelectStart);
+  //   controller.removeEventListener('selectend', onSelectEnd);
     width = window.innerWidth;
     height = window.innerHeight;
     camera.aspect = width / height;
@@ -514,14 +514,14 @@ renderer.xr.addEventListener('sessionend', () => {
 });
 
 
-function onSelectStart(event) {
-  const controller = event.target;
-  controller.userData.selectState = true;
-}
+// function onSelectStart(event) {
+//   const controller = event.target;
+//   controller.userData.selectState = true;
+// }
 
-function onSelectEnd(event) {
-  const controller = event.target;
-  controller.userData.selectState = false;
+// function onSelectEnd(event) {
+//   const controller = event.target;
+//   controller.userData.selectState = false;
 
   // Reset button states
   uiContainer.children.forEach(child => {
@@ -532,27 +532,27 @@ function onSelectEnd(event) {
 }
 
 
-function handleController(controller) {
-  const userData = controller.userData;
-  const line = controller.getObjectByName('line');
-  const tempMatrix = new THREE.Matrix4();
-  tempMatrix.identity().extractRotation(controller.matrixWorld);
+// function handleController(controller) {
+//   const userData = controller.userData;
+//   const line = controller.getObjectByName('line');
+//   const tempMatrix = new THREE.Matrix4();
+//   tempMatrix.identity().extractRotation(controller.matrixWorld);
 
-  raycaster.ray.origin.setFromMatrixPosition(controller.matrixWorld);
-  raycaster.ray.direction.set(0, 0, -1).applyMatrix4(tempMatrix);
+//   raycaster.ray.origin.setFromMatrixPosition(controller.matrixWorld);
+//   raycaster.ray.direction.set(0, 0, -1).applyMatrix4(tempMatrix);
 
-  const intersects = raycaster.intersectObjects(uiContainer.children, true);
+//   const intersects = raycaster.intersectObjects(uiContainer.children, true);
 
-  if (intersects.length > 0) {
-    const res = intersects[0];
-    res.object.parent.setState('hovered');
-    if (userData.selectState) {
-      res.object.parent.setState('selected');
-      if (typeof res.object.parent.onClick === 'function') {
-        res.object.parent.onClick();  // Ensure the onClick method is called
-      }
-    }
-  }
+//   if (intersects.length > 0) {
+//     const res = intersects[0];
+//     res.object.parent.setState('hovered');
+//     if (userData.selectState) {
+//       res.object.parent.setState('selected');
+//       if (typeof res.object.parent.onClick === 'function') {
+//         res.object.parent.onClick();  // Ensure the onClick method is called
+//       }
+//     }
+//   }
 
-  line.visible = true;
-}
+//   line.visible = true;
+// }

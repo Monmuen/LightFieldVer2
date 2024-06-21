@@ -211,6 +211,9 @@ function loadPlane() {
 async function extractVideo(sceneName) {
   try {
     const video = document.createElement('video');
+    video.preload = 'auto';
+    video.crossOrigin = 'anonymous'; // 如果视频文件在不同的域
+
     const canvas = document.createElement('canvas');
     const ctx = canvas.getContext('2d');
     const progressElement = document.getElementById('progress');
@@ -219,13 +222,20 @@ async function extractVideo(sceneName) {
     canvas.height = resY;
     canvas.setAttribute('id', 'videosrc');
     video.src = filesrc;
-    video.muted = true;
 
+    video.addEventListener('loadeddata', async () => {
+      await fetchFrames();
+      console.log('loaded data');
+      controlsDiv.style.display = 'block'; // Show controls
+      loadWrap.style.display = 'none'; // Hide load wrap 
+    });
+
+    let seekResolve;
     let count = 0;
     let offset = 0;
     const allBuffer = new Uint8Array(resX * resY * 4 * camsX * camsY);
 
-    const processFrame = () => {
+    const getBufferFromVideo = () => {
       ctx.drawImage(video, 0, 0, resX, resY);
       const imgData = ctx.getImageData(0, 0, resX, resY);
       allBuffer.set(imgData.data, offset);
@@ -234,56 +244,23 @@ async function extractVideo(sceneName) {
       progressElement.textContent = `Loaded ${Math.round(100 * count / (camsX * camsY))}%`;
     };
 
-    const handleVideoFrame = async () => {
+    const fetchFrames = async () => {
+      let currentTime = 0;
       while (count < camsX * camsY) {
-        await new Promise((resolve, reject) => {
-          video.onseeked = () => {
-            processFrame();
-            resolve();
-          };
-          video.currentTime += 0.0333; // Assuming 30 FPS video
-        });
+        getBufferFromVideo();
+        currentTime += 0.0333;
+        video.currentTime = currentTime;
+        await new Promise(res => (seekResolve = res));
       }
-
       loadWrap.style.display = 'none';
-
       fieldTexture = new THREE.DataTexture2DArray(allBuffer, resX, resY, camsX * camsY);
-      console.log('Loaded field data');
-
       planeMat.uniforms.field.value = fieldTexture;
       fieldTexture.needsUpdate = true;
-
-      controlsDiv.style.display = 'block'; // Show controls
-      loadWrap.style.display = 'none'; // Hide load wrap 
     };
 
-    video.addEventListener('loadeddata', async () => {
-      console.log('Video loaded data, starting frame extraction');
-      await handleVideoFrame();
-    });
-
-    video.addEventListener('error', (e) => {
-      const error = e.currentTarget.error;
-      let errorMessage = 'Unknown error';
-      switch (error.code) {
-        case error.MEDIA_ERR_ABORTED:
-          errorMessage = 'You aborted the video playback.';
-          break;
-        case error.MEDIA_ERR_NETWORK:
-          errorMessage = 'A network error caused the video download to fail part-way.';
-          break;
-        case error.MEDIA_ERR_DECODE:
-          errorMessage = 'The video playback was aborted due to a corruption problem or because the video used features your browser did not support.';
-          break;
-        case error.MEDIA_ERR_SRC_NOT_SUPPORTED:
-          errorMessage = 'The video could not be loaded, either because the server or network failed or because the format is not supported.';
-          break;
-        default:
-          errorMessage = 'An unknown error occurred.';
-          break;
-      }
-      console.error('Error loading video:', errorMessage);
-      alert(`Error loading video: ${errorMessage}`);
+    video.addEventListener('seeked', async function () {
+      if (seekResolve) seekResolve();
+      console.log('Video seeked');
     });
 
   } catch (error) {
@@ -291,6 +268,7 @@ async function extractVideo(sceneName) {
     alert('An error occurred while extracting video.');
   }
 }
+
 
 
 
@@ -480,27 +458,33 @@ function initControllers() {
 initControllers();
 
 renderer.xr.addEventListener('sessionstart', () => {
-  isVRPresenting = true;
-  useDeviceControls = true;
-  plane.position.set(0,0,-2);
-  planePts.position.set(0, 1.6, -2.01);
-  plane.updateMatrix();
-  uiContainer.visible = true;
-  controllers.forEach(controller => {
-    controller.addEventListener('selectstart', onSelectStart);
-    controller.addEventListener('selectend', onSelectEnd);
-  // });
-  console.log('Plane position set to:', plane.position);
-  console.log('PlanePts position set to:', planePts.position);
+  try {
+    isVRPresenting = true;
+    useDeviceControls = true;
+    plane.position.set(0, 0, -2);
+    planePts.position.set(0, 1.6, -2.01);
+    plane.updateMatrix();
+    uiContainer.visible = true;
+    controllers.forEach(controller => {
+      controller.addEventListener('selectstart', onSelectStart);
+      controller.addEventListener('selectend', onSelectEnd);
+    });
+    console.log('Plane position set to:', plane.position);
+    console.log('PlanePts position set to:', planePts.position);
+  } catch (error) {
+    console.error('Error in sessionstart:', error);
+  }
 });
 
 renderer.xr.addEventListener('sessionend', () => {
-  isVRPresenting = false;
-  scene.position.set(0,0,0);
-  uiContainer.visible = false;
-  // controllers.forEach(controller => {
-  //   controller.removeEventListener('selectstart', onSelectStart);
-  //   controller.removeEventListener('selectend', onSelectEnd);
+  try {
+    isVRPresenting = false;
+    scene.position.set(0, 0, 0);
+    uiContainer.visible = false;
+    controllers.forEach(controller => {
+      controller.removeEventListener('selectstart', onSelectStart);
+      controller.removeEventListener('selectend', onSelectEnd);
+    });
     width = window.innerWidth;
     height = window.innerHeight;
     camera.aspect = width / height;
@@ -509,9 +493,11 @@ renderer.xr.addEventListener('sessionend', () => {
     gyroCamera.updateProjectionMatrix();
     renderer.setSize(width, height);
     effect.setSize(width, height);
-  
-  });
+  } catch (error) {
+    console.error('Error in sessionend:', error);
+  }
 });
+
 
 
 function onSelectStart(event) {

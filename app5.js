@@ -319,28 +319,17 @@ function animate() {
   });
 }
 
-let initialOrientation = null;
-
-function initDeviceOrientationControls() {
-  window.addEventListener('deviceorientation', handleDeviceOrientation, true);
-}
-
-function disableDeviceOrientationControls() {
-  window.removeEventListener('deviceorientation', handleDeviceOrientation, true);
-  initialOrientation = null;
-}
-
 function handleDeviceOrientation(event) {
   const alpha = event.alpha ? THREE.MathUtils.degToRad(event.alpha) : 0;
   const beta = event.beta ? THREE.MathUtils.degToRad(event.beta) : 0;
   const gamma = event.gamma ? THREE.MathUtils.degToRad(event.gamma) : 0;
 
   if (!initialOrientation) {
-    // 根据手机初始方向调整初始方向的基准
+    // 初始方向的基准是手机当前的方向
     initialOrientation = {
-      alpha: alpha - 90,  // 初始 alpha 角度为手机当前 alpha - 90 度
+      alpha: alpha,
       beta: beta,
-      gamma: gamma + 90   // 初始 gamma 角度为手机当前 gamma + 90 度
+      gamma: gamma
     };
   }
 
@@ -354,7 +343,7 @@ function updateCameraOrientation(alpha, beta, gamma) {
   const betaOffset = beta - initialOrientation.beta;
   const gammaOffset = gamma - initialOrientation.gamma;
 
-  const euler = new THREE.Euler(betaOffset, gammaOffset, alphaOffset, 'YXZ');
+  const euler = new THREE.Euler(gammaOffset, alphaOffset,betaOffset,  'YXZ');
   gyroCamera.quaternion.setFromEuler(euler);
   gyroCamera.updateMatrixWorld(true);
 }

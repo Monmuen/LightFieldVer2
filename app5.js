@@ -586,8 +586,11 @@ function logError(context, error) {
   };
   console.error(errorMessage);
 
+  // 弹出错误信息
+  alert(`Error occurred: ${context}\n${error.message}\n${error.stack}`);
+
   // 发送错误信息到服务器
-  fetch('/api/logError', {
+  fetch('/logError', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json'
@@ -644,7 +647,15 @@ window.addEventListener('load', function() {
     localStorage.removeItem('lastError');
   }
 });
-
+// 阻止页面强制刷新
+window.addEventListener('beforeunload', function(event) {
+  const lastError = localStorage.getItem('lastError');
+  if (lastError) {
+    // 提示用户确认离开页面
+    event.preventDefault();
+    event.returnValue = ''; // 标准兼容方式
+  }
+});
 
 function raycast() {
 

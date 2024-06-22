@@ -1,5 +1,3 @@
-
-import * as THREENEW from './vendor/three.js';
 import * as THREE from './vendor/three.module.js';
 import { OrbitControls } from './vendor/OrbitControls.js';
 import { StereoEffect } from './vendor/StereoEffects.js';
@@ -95,30 +93,46 @@ gyroButton.addEventListener('click', () => {
   if (useDeviceControls) {
     if (DeviceMotionEvent.requestPermission) {
       requestPermission();
-      }
+    }
     controls.enabled = false;
     initDeviceOrientationControls();
     console.log("Start the device control mode.");
-    }else {
+    
+    // Hide all controls except gyro-button
+    document.querySelectorAll('.controls > div').forEach(div => {
+      if (!div.contains(gyroButton)) {
+        div.style.display = 'none';
+      } else {
+        div.style.display = 'block';
+      }
+    });
+
+  } else {
     controls.enabled = true;
     disableDeviceOrientationControls();
     console.log("Close the device control mode.");
+
+    // Show all controls
+    document.querySelectorAll('.controls > div').forEach(div => {
+      div.style.display = 'block';
+    });
   }
 });
 
 function requestPermission() {
   DeviceMotionEvent.requestPermission()
     .then(function (permissionState) {
-    // granted:用户允许浏览器监听陀螺仪事件
-    if (permissionState === 'granted') {
-      rotate()
-    } else {
-      gyroButton.innerHTML = 'Please grant the permission.'
-    }
-  }).catch(function (err) {s
-    gyroButton.innerHTML = 'Permisstion request failed.'
-  });
+      // granted:user permmited
+      if (permissionState === 'granted') {
+        rotate();
+      } else {
+        gyroButton.innerHTML = 'Please grant the permission.';
+      }
+    }).catch(function (err) {
+      gyroButton.innerHTML = 'Permission request failed.';
+    });
 }
+
 
 backButton.addEventListener('click', () => {
   loadWrap.style.display = 'flex'; // Show load wrap
@@ -165,8 +179,6 @@ async function loadLightField(sceneName, resolutionX, resolutionY) {
   initPlaneMaterial();
   await extractVideo(sceneName);
   loadPlane();
-  console.log('Plane Geometry:', plane.geometry);
-  console.log('Plane Material:', plane.material);
   animate();
 }
 
@@ -211,24 +223,13 @@ function loadPlane() {
 async function extractVideo(sceneName) {
   try {
     const video = document.createElement('video');
-    video.preload = 'auto';
-    video.crossOrigin = 'anonymous'; // 如果视频文件在不同的域
-
     const canvas = document.createElement('canvas');
     const ctx = canvas.getContext('2d');
     const progressElement = document.getElementById('progress');
-    let filesrc = `./${sceneName}/${sceneName}.mp4`;
+    const filesrc = `./${sceneName}/${sceneName}.mp4`;
     canvas.width = resX;
     canvas.height = resY;
     canvas.setAttribute('id', 'videosrc');
-    video.src = filesrc;
-
-    video.addEventListener('loadeddata', async () => {
-      await fetchFrames();
-      console.log('loaded data');
-      controlsDiv.style.display = 'block'; // Show controls
-      loadWrap.style.display = 'none'; // Hide load wrap 
-    });
 
     let seekResolve;
     let count = 0;
@@ -246,14 +247,19 @@ async function extractVideo(sceneName) {
 
     const fetchFrames = async () => {
       let currentTime = 0;
+
       while (count < camsX * camsY) {
         getBufferFromVideo();
         currentTime += 0.0333;
         video.currentTime = currentTime;
         await new Promise(res => (seekResolve = res));
       }
+
       loadWrap.style.display = 'none';
+
       fieldTexture = new THREE.DataTexture2DArray(allBuffer, resX, resY, camsX * camsY);
+      console.log('Loaded field data');
+
       planeMat.uniforms.field.value = fieldTexture;
       fieldTexture.needsUpdate = true;
     };
@@ -263,15 +269,26 @@ async function extractVideo(sceneName) {
       console.log('Video seeked');
     });
 
+    video.addEventListener('loadeddata', async () => {
+      await fetchFrames();
+      console.log('loaded data');
+      controlsDiv.style.display = 'block'; // Show controls
+      loadWrap.style.display = 'none'; // Hide load wrap 
+    });
+
+    // Fetch video file and cache it as a blob URL
+    const response = await fetch(filesrc);
+    const blob = await response.blob();
+    const blobURL = URL.createObjectURL(blob);
+    video.src = blobURL;
+
+    video.load();
+
   } catch (error) {
     console.error('Error extracting video:', error);
     alert('An error occurred while extracting video.');
   }
 }
-
-
-
-
 function animate() {
   renderer.setAnimationLoop(() => {
     let activeCamera = useDeviceControls ? gyroCamera : camera;
@@ -314,7 +331,7 @@ function handleDeviceOrientation(event) {
   const gamma = event.gamma ? THREE.MathUtils.degToRad(event.gamma) : 0;
 
   if (!initialOrientation) {
-    // 初始方向的基准是手机当前的方向
+    // 设置初始方向为当前设备方向
     initialOrientation = {
       alpha: alpha,
       beta: beta,
@@ -328,18 +345,18 @@ function handleDeviceOrientation(event) {
 function updateCameraOrientation(alpha, beta, gamma) {
   if (!initialOrientation) return;
 
+  // 计算相对于初始方向的偏移量
   const alphaOffset = alpha - initialOrientation.alpha;
   const betaOffset = beta - initialOrientation.beta;
   const gammaOffset = gamma - initialOrientation.gamma;
 
-  const euler = new THREE.Euler(gammaOffset, alphaOffset,betaOffset,  'YXZ');
+  // 计算旋转角度，调整轴顺序以适应VR设备佩戴姿态
+  const euler = new THREE.Euler(betaOffset, alphaOffset, -gammaOffset, 'YXZ');
   gyroCamera.quaternion.setFromEuler(euler);
   gyroCamera.updateMatrixWorld(true);
 }
 
-
-
-// VR模式UI部分
+// VR mode UI
 
 const uiContainer = new ThreeMeshUI.Block({
   justifyContent: 'center',
@@ -355,7 +372,7 @@ const uiContainer = new ThreeMeshUI.Block({
 
 uiContainer.position.set(0, 1, -2);
 uiContainer.rotation.x = -0.5;
-uiContainer.visible = false;  // 一开始隐藏
+uiContainer.visible = false;  // invisible initially
 scene.add(uiContainer);
 
 
@@ -409,7 +426,7 @@ function createButton(text, onClick) {
   return button;
 }
 
-// Example usage
+
 uiContainer.add(
   createButton('+Aperture', () => {
     aperture += 0.1;
@@ -455,36 +472,30 @@ function initControllers() {
     controller.add(line);
   }
 }
-initControllers();
 
 renderer.xr.addEventListener('sessionstart', () => {
-  try {
-    isVRPresenting = true;
-    useDeviceControls = true;
-    plane.position.set(0, 0, -2);
-    planePts.position.set(0, 1.6, -2.01);
-    plane.updateMatrix();
-    uiContainer.visible = true;
-    controllers.forEach(controller => {
-      controller.addEventListener('selectstart', onSelectStart);
-      controller.addEventListener('selectend', onSelectEnd);
-    });
-    console.log('Plane position set to:', plane.position);
-    console.log('PlanePts position set to:', planePts.position);
-  } catch (error) {
-    console.error('Error in sessionstart:', error);
-  }
+  isVRPresenting = true;
+  useDeviceControls = true;
+  plane.position.set(0,0,-2);
+  planePts.position.set(0, 1.6, -2.01);
+  plane.updateMatrix();
+  uiContainer.visible = true;
+  initControllers();
+  controllers.forEach(controller => {
+    controller.addEventListener('selectstart', onSelectStart);
+    controller.addEventListener('selectend', onSelectEnd);
+  });
+  console.log('Plane position set to:', plane.position);
+  console.log('PlanePts position set to:', planePts.position);
 });
 
 renderer.xr.addEventListener('sessionend', () => {
-  try {
-    isVRPresenting = false;
-    scene.position.set(0, 0, 0);
-    uiContainer.visible = false;
-    controllers.forEach(controller => {
-      controller.removeEventListener('selectstart', onSelectStart);
-      controller.removeEventListener('selectend', onSelectEnd);
-    });
+  isVRPresenting = false;
+  scene.position.set(0,0,0);
+  uiContainer.visible = false;
+  controllers.forEach(controller => {
+    controller.removeEventListener('selectstart', onSelectStart);
+    controller.removeEventListener('selectend', onSelectEnd);
     width = window.innerWidth;
     height = window.innerHeight;
     camera.aspect = width / height;
@@ -493,11 +504,9 @@ renderer.xr.addEventListener('sessionend', () => {
     gyroCamera.updateProjectionMatrix();
     renderer.setSize(width, height);
     effect.setSize(width, height);
-  } catch (error) {
-    console.error('Error in sessionend:', error);
-  }
+  
+  });
 });
-
 
 
 function onSelectStart(event) {
@@ -542,3 +551,6 @@ function handleController(controller) {
 
   line.visible = true;
 }
+
+
+

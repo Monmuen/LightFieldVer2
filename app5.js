@@ -4,10 +4,12 @@ import { StereoEffect } from './vendor/StereoEffects.js';
 import { VRButton } from './vendor/VRButton.js';
 import ThreeMeshUI from 'https://cdn.skypack.dev/three-mesh-ui';
 import { XRControllerModelFactory } from './vendor/XRControllerModelFactory.js';
-
-const controllerModelFactory = new XRControllerModelFactory();
+import VRControl from './vendor/VRControl.js';
+// const controllerModelFactory = new XRControllerModelFactory();
 
 let isVRPresenting = false;
+let selectState = false;
+let container;
 const apertureInput = document.querySelector('#aperture');
 const focusInput = document.querySelector('#focus');
 const stInput = document.querySelector('#stplane');
@@ -23,6 +25,7 @@ const legoKnightsButton = document.querySelector('#legoKnights');
 const legoTruckButton = document.querySelector('#legoTruck');
 const theStanfordBunnyButton = document.querySelector('#theStanfordBunny');
 const tarotCardsAndCrystalBallButton = document.querySelector('#tarotCardsAndCrystalBall');
+
 
 const scene = new THREE.Scene();
 let width = window.innerWidth;
@@ -61,6 +64,20 @@ const vConsole = new VConsole();
 
 let resX;
 let resY;
+const raycaster = new THREE.Raycaster();
+let vrControl;
+const objsToTest = [];
+
+vrControl = VRControl( renderer, camera, scene );
+
+scene.add( vrControl.controllerGrips[ 0 ], vrControl.controllers[ 0 ] );
+	vrControl.controllers[ 0 ].addEventListener( 'selectstart', () => {
+		selectState = true;
+	} );
+	vrControl.controllers[ 0 ].addEventListener( 'selectend', () => {
+		selectState = false;
+	} );
+
 window.addEventListener('resize', () => {
   if (!isVRPresenting) {
   width = window.innerWidth;
@@ -292,16 +309,20 @@ async function extractVideo(sceneName) {
 function animate() {
   renderer.setAnimationLoop(() => {
     let activeCamera = useDeviceControls ? gyroCamera : camera;
+    let intersect;
+   
     if (!useDeviceControls) {
       controls.update();
     }
-
     // Update ThreeMeshUI
     ThreeMeshUI.update();
 
-    // Handle VR controller interactions
     if (renderer.xr.isPresenting) {
-      controllers.forEach(controller => handleController(controller));
+      vrControl.setFromController(0, raycaster.ray);
+      intersect = raycast(); // 更新intersect变量
+      // Position the little white dot at the end of the controller pointing ray
+      if (intersect) vrControl.setPointerAt(0, intersect.point);
+      updateButtons(intersect); // 传递intersect到updateButtons
     }
 
     if (isStereoView) {
@@ -330,7 +351,7 @@ function handleDeviceOrientation(event) {
   const beta = event.beta ? THREE.MathUtils.degToRad(event.beta) : 0;
   let gamma = event.gamma ? THREE.MathUtils.degToRad(event.gamma) : 0;
 
-  // Adjust initial gamma offset for PICO 4 device
+ 
   if (initialOrientation === null) {
     gamma += THREE.MathUtils.degToRad(90); // Correct for initial gamma offset
     alpha += THREE.MathUtils.degToRad(-90);
@@ -362,201 +383,263 @@ function updateCameraOrientation(alpha, beta, gamma) {
   gyroCamera.updateMatrixWorld(true);
 }
 
+
+
 // VR mode UI
 
-const uiContainer = new ThreeMeshUI.Block({
-  justifyContent: 'center',
-  contentDirection: 'row-reverse',
-  fontFamily: './assets/Roboto-msdf.json',
-  fontTexture: './assets/Roboto-msdf.png',
-  fontSize: 0.05,
-  padding: 0.02,
-  borderRadius: 0.11,
-  backgroundColor: new THREE.Color(0x222222),
-  backgroundOpacity: 0.8
-});
+function makePanel() {
 
-uiContainer.position.set(0, 1, -2);
-uiContainer.rotation.x = -0.5;
-uiContainer.visible = false;  // invisible initially
-scene.add(uiContainer);
+	// Container block, in which we put the two buttons.
+	// We don't define width and height, it will be set automatically from the children's dimensions
+	// Note that we set contentDirection: "row-reverse", in order to orient the buttons horizontally
 
+	  container = new ThreeMeshUI.Block( {
+		justifyContent: 'center',
+		contentDirection: 'row-reverse',
+		fontFamily: './assets/Roboto-msdf.json',
+		fontTexture: './assets/Roboto-msdf.png',
+		fontSize: 0.07,
+		padding: 0.02,
+		borderRadius: 0.11,
+    backgroundColor: new THREE.Color(0x222222),
+    backgroundOpacity: 0.8
+	} );
 
-function createButton(text, onClick) {
-  const button = new ThreeMeshUI.Block({
-    width: 0.3,
-    height: 0.15,
-    justifyContent: 'center',
-    offset: 0.05,
-    margin: 0.02,
-    borderRadius: 0.075,
-    backgroundColor: new THREE.Color(0x666666),
-    backgroundOpacity: 0.3
-  });
+	container.position.set( 0, 1, -2 );
+	container.rotation.x = -0.55;
+	scene.add( container );
 
-  button.onClick = onClick;  // Ensure each button has an onClick method
+	// BUTTONS
 
-  button.add(new ThreeMeshUI.Text({ content: text }));
+	// We start by creating objects containing options that we will use with the two buttons,
+	// in order to write less code.
 
-  button.setupState({
-    state: 'selected',
-    attributes: {
-      offset: 0.02,
-      backgroundColor: new THREE.Color(0x777777),
-      fontColor: new THREE.Color(0x222222)
-    },
-    onSet: () => {
-      button.onClick();  // Execute the onClick callback
-    }
-  });
+	const buttonOptions = {
+		width: 0.4,
+		height: 0.15,
+		justifyContent: 'center',
+		offset: 0.05,
+		margin: 0.02,
+		borderRadius: 0.075
+	};
 
-  button.setupState({
-    state: 'hovered',
-    attributes: {
-      offset: 0.035,
-      backgroundColor: new THREE.Color(0x999999),
-      fontColor: new THREE.Color(0xffffff)
-    }
-  });
+	// Options for component.setupState().
+	// It must contain a 'state' parameter, which you will refer to with component.setState( 'name-of-the-state' ).
 
-  button.setupState({
-    state: 'idle',
-    attributes: {
-      offset: 0.035,
-      backgroundColor: new THREE.Color(0x666666),
-      backgroundOpacity: 0.3,
-      fontColor: new THREE.Color(0xffffff)
-    }
-  });
+	const hoveredStateAttributes = {
+		state: 'hovered',
+		attributes: {
+			offset: 0.035,
+			backgroundColor: new THREE.Color( 0x999999 ),
+			backgroundOpacity: 1,
+			fontColor: new THREE.Color( 0xffffff )
+		},
+	};
 
-  return button;
+	const idleStateAttributes = {
+		state: 'idle',
+		attributes: {
+			offset: 0.035,
+			backgroundColor: new THREE.Color( 0x666666 ),
+			backgroundOpacity: 0.3,
+			fontColor: new THREE.Color( 0xffffff )
+		},
+	};
+
+	// Buttons creation, with the options objects passed in parameters.
+
+	const buttonApertureAdd = new ThreeMeshUI.Block( buttonOptions );
+	const buttonApertureMinus = new ThreeMeshUI.Block( buttonOptions );
+  const buttonFocusAdd = new ThreeMeshUI.Block( buttonOptions );
+	const buttonFocusMinus = new ThreeMeshUI.Block( buttonOptions );
+  const buttonCameraAdd = new ThreeMeshUI.Block( buttonOptions );
+	const buttonCameraMinus = new ThreeMeshUI.Block( buttonOptions );
+
+	// Add text to buttons
+
+	buttonApertureAdd.add(
+		new ThreeMeshUI.Text( { content: 'Aperture+' } )
+	);
+
+	buttonApertureMinus.add(
+		new ThreeMeshUI.Text( { content: 'Aperture-' } )
+	);
+  buttonFocusAdd.add(
+		new ThreeMeshUI.Text( { content: 'Focus+' } )
+	);
+
+	buttonFocusMinus.add(
+		new ThreeMeshUI.Text( { content: 'Focus-' } )
+	);
+  buttonCameraAdd.add(
+		new ThreeMeshUI.Text( { content: 'CameraZ+' } )
+	);
+
+	buttonCameraMinus.add(
+		new ThreeMeshUI.Text( { content: 'CameraZ-' } )
+	);
+
+	// Create states for the buttons.
+	// In the loop, we will call component.setState( 'state-name' ) when mouse hover or click
+
+	const selectedAttributes = {
+		offset: 0.02,
+		backgroundColor: new THREE.Color( 0x777777 ),
+		fontColor: new THREE.Color( 0x222222 )
+	};
+
+	buttonApertureAdd.setupState( {
+		state: 'selected',
+		attributes: selectedAttributes,
+		onSet: () => {
+       aperture += 0.1;
+       planeMat.uniforms.aperture.value = aperture;
+			//
+		}
+	} );
+	buttonApertureAdd.setupState( hoveredStateAttributes );
+	buttonApertureAdd.setupState( idleStateAttributes );
+
+	//
+
+	buttonApertureMinus.setupState( {
+		state: 'selected',
+		attributes: selectedAttributes,
+		onSet: () => {
+
+			aperture = Math.max(0,aperture - 0.1);
+       planeMat.uniforms.aperture.value = aperture;
+
+		}
+	} );
+	buttonApertureMinus.setupState( hoveredStateAttributes );
+	buttonApertureMinus.setupState( idleStateAttributes );
+
+	//
+	buttonFocusAdd.setupState( {
+		state: 'selected',
+		attributes: selectedAttributes,
+		onSet: () => {
+
+			focus += 0.01;
+      planeMat.uniforms.focus.value = focus;
+
+		}
+	} );
+	buttonFocusMinus.setupState( hoveredStateAttributes );
+	buttonFocusMinus.setupState( idleStateAttributes );
+
+  //
+
+  buttonFocusMinus.setupState( {
+		state: 'selected',
+		attributes: selectedAttributes,
+		onSet: () => {
+
+			focus = Math.max(-(focus - 0.01), focus - 0.01);
+      planeMat.uniforms.focus.value = focus;
+
+		}
+	} );
+	buttonFocusAdd.setupState( hoveredStateAttributes );
+	buttonFocusAdd.setupState( idleStateAttributes );
+
+  //
+
+  buttonCameraAdd.setupState( {
+		state: 'selected',
+		attributes: selectedAttributes,
+		onSet: () => {
+
+			plane.position.z += 0.1;
+
+		}
+	} );
+	buttonCameraAdd.setupState( hoveredStateAttributes );
+	buttonCameraAdd.setupState( idleStateAttributes );
+  
+  //
+
+  buttonCameraMinus.setupState( {
+		state: 'selected',
+		attributes: selectedAttributes,
+		onSet: () => {
+
+			plane.position.z -= 0.1;
+
+		}
+	} );
+	buttonCameraMinus.setupState( hoveredStateAttributes );
+	buttonCameraMinus.setupState( idleStateAttributes );
+  
+  //
+
+	container.add( buttonCameraAdd,buttonApertureAdd,buttonApertureMinus,buttonCameraMinus,buttonFocusAdd,buttonFocusMinus );
+	objsToTest.push( buttonCameraAdd,buttonApertureAdd,buttonApertureMinus,buttonCameraMinus,buttonFocusAdd,buttonFocusMinus );
+
 }
 
-
-uiContainer.add(
-  createButton('+Aperture', () => {
-    aperture += 0.1;
-    planeMat.uniforms.aperture.value = aperture;
-  }),
-  createButton('-Aperture', () => {
-    aperture = Math.max(0, aperture - 0.1);
-    planeMat.uniforms.aperture.value = aperture;
-  }),
-  createButton('+Focus', () => {
-    focus += 0.01;
-    planeMat.uniforms.focus.value = focus;
-  }),
-  createButton('-Focus', () => {
-    focus = Math.max(0, focus - 0.01);
-    planeMat.uniforms.focus.value = focus;
-  }),
-  createButton('+CameraZ', () => {
-    plane.position.z += 0.1;
-  }),
-  createButton('-CameraZ', () => {
-    plane.position.z -= 0.1;
-  })
-);
-
-const raycaster = new THREE.Raycaster();
-
-const controllers = [];
-
-function initControllers() {
-  for (let i = 0; i <= 1; i++) {
-    const controller = renderer.xr.getController(i);
-    scene.add(controller);
-    controllers.push(controller);
-
-    const controllerModel = controllerModelFactory.createControllerModel(controller);
-    controller.add(controllerModel);
-
-    const geometry = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(0, 0, 0), new THREE.Vector3(0, 0, -1)]);
-    const line = new THREE.Line(geometry);
-    line.name = 'line';
-    line.scale.z = 5;
-    controller.add(line);
-  }
-}
 
 renderer.xr.addEventListener('sessionstart', () => {
   isVRPresenting = true;
-  useDeviceControls = true;
   plane.position.set(0,0,-2);
   planePts.position.set(0, 1.6, -2.01);
   plane.updateMatrix();
-  uiContainer.visible = true;
-  initControllers();
-  controllers.forEach(controller => {
-    controller.addEventListener('selectstart', onSelectStart);
-    controller.addEventListener('selectend', onSelectEnd);
-  });
-  console.log('Plane position set to:', plane.position);
-  console.log('PlanePts position set to:', planePts.position);
+  makePanel(); // 调用makePanel函数
+  scene.add(container); // 添加container到场景中
+
+
+  
 });
 
 renderer.xr.addEventListener('sessionend', () => {
   isVRPresenting = false;
   scene.position.set(0,0,0);
-  uiContainer.visible = false;
-  controllers.forEach(controller => {
-    controller.removeEventListener('selectstart', onSelectStart);
-    controller.removeEventListener('selectend', onSelectEnd);
-    width = window.innerWidth;
-    height = window.innerHeight;
-    camera.aspect = width / height;
-    gyroCamera.aspect = width / height;
-    camera.updateProjectionMatrix();
-    gyroCamera.updateProjectionMatrix();
-    renderer.setSize(width, height);
-    effect.setSize(width, height);
+  if (container) {
+    scene.remove(container); // 从场景中移除container
+  }
   
-  });
+ 
 });
 
 
-function onSelectStart(event) {
-  const controller = event.target;
-  controller.userData.selectState = true;
+function raycast() {
+
+	return objsToTest.reduce( ( closestIntersection, obj ) => {
+
+		const intersection = raycaster.intersectObject( obj, true );
+
+		if ( !intersection[ 0 ] ) return closestIntersection;
+
+		if ( !closestIntersection || intersection[ 0 ].distance < closestIntersection.distance ) {
+
+			intersection[ 0 ].object = obj;
+
+			return intersection[ 0 ];
+
+		}
+
+		return closestIntersection;
+
+	}, null );
+
 }
+function updateButtons(intersect){
 
-function onSelectEnd(event) {
-  const controller = event.target;
-  controller.userData.selectState = false;
-
-  // Reset button states
-  uiContainer.children.forEach(child => {
-    if (child.isUI) {
-      child.setState('idle');
-    }
-  });
+  if ( intersect && intersect.object.isUI ) {
+		if ( selectState ) {
+			// Component.setState internally call component.set with the options you defined in component.setupState
+			intersect.object.setState( 'selected' );
+		} else {
+			// Component.setState internally call component.set with the options you defined in component.setupState
+			intersect.object.setState( 'hovered' );
+		}
+	}
+	// Update non-targeted buttons state
+	objsToTest.forEach( ( obj ) => {
+		if ( ( !intersect || obj !== intersect.object ) && obj.isUI ) {
+			// Component.setState internally call component.set with the options you defined in component.setupState
+			obj.setState( 'idle' );
+		}
+	});
 }
-
-
-function handleController(controller) {
-  const userData = controller.userData;
-  const line = controller.getObjectByName('line');
-  const tempMatrix = new THREE.Matrix4();
-  tempMatrix.identity().extractRotation(controller.matrixWorld);
-
-  raycaster.ray.origin.setFromMatrixPosition(controller.matrixWorld);
-  raycaster.ray.direction.set(0, 0, -1).applyMatrix4(tempMatrix);
-
-  const intersects = raycaster.intersectObjects(uiContainer.children, true);
-
-  if (intersects.length > 0) {
-    const res = intersects[0];
-    res.object.parent.setState('hovered');
-    if (userData.selectState) {
-      res.object.parent.setState('selected');
-      if (typeof res.object.parent.onClick === 'function') {
-        res.object.parent.onClick();  // Ensure the onClick method is called
-      }
-    }
-  }
-
-  line.visible = true;
-}
-
-
-

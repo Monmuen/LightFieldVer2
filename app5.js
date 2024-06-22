@@ -326,12 +326,18 @@ function disableDeviceOrientationControls() {
 }
 
 function handleDeviceOrientation(event) {
-  const alpha = event.alpha ? THREE.MathUtils.degToRad(event.alpha) : 0;
+  let alpha = event.alpha ? THREE.MathUtils.degToRad(event.alpha) : 0;
   const beta = event.beta ? THREE.MathUtils.degToRad(event.beta) : 0;
-  const gamma = event.gamma ? THREE.MathUtils.degToRad(event.gamma) : 0;
+  let gamma = event.gamma ? THREE.MathUtils.degToRad(event.gamma) : 0;
+
+  // Adjust initial gamma offset for PICO 4 device
+  if (initialOrientation === null) {
+    gamma += THREE.MathUtils.degToRad(90); // Correct for initial gamma offset
+    alpha += THREE.MathUtils.degToRad(-90);
+  }
 
   if (!initialOrientation) {
-    // 设置初始方向为当前设备方向
+    // Set initial orientation based on current device orientation
     initialOrientation = {
       alpha: alpha,
       beta: beta,
@@ -345,13 +351,13 @@ function handleDeviceOrientation(event) {
 function updateCameraOrientation(alpha, beta, gamma) {
   if (!initialOrientation) return;
 
-  // 计算相对于初始方向的偏移量
+  // Calculate offsets relative to initial orientation
   const alphaOffset = alpha - initialOrientation.alpha;
   const betaOffset = beta - initialOrientation.beta;
   const gammaOffset = gamma - initialOrientation.gamma;
 
-  // 计算旋转角度，调整轴顺序以适应VR设备佩戴姿态
-  const euler = new THREE.Euler(betaOffset, alphaOffset, -gammaOffset, 'YXZ');
+  // Adjust Euler angles sequence and mapping for PICO 4 device
+  const euler = new THREE.Euler(-gammaOffset, alphaOffset, -betaOffset, 'YXZ');
   gyroCamera.quaternion.setFromEuler(euler);
   gyroCamera.updateMatrixWorld(true);
 }

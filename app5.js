@@ -405,7 +405,7 @@ function makePanel() {
     backgroundOpacity: 0.8
 	} );
 
-	container.position.set( 0, 1, -2 );
+	container.position.set( 0, 0, -2 );
 	container.rotation.x = -0.55;
 	scene.add( container );
 
@@ -617,7 +617,7 @@ renderer.xr.addEventListener('sessionstart', () => {
   try {
     isVRPresenting = true;
     plane.position.set(0, 0, -2);
-    planePts.position.set(0, 1.6, -2.01);
+    planePts.position.set(0, 0, -2.01);
     plane.updateMatrix();
     makePanel(); // 调用makePanel函数
     scene.add(container); // 添加container到场景中

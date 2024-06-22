@@ -578,28 +578,71 @@ function makePanel() {
 	objsToTest.push( buttonCameraAdd,buttonApertureAdd,buttonApertureMinus,buttonCameraMinus,buttonFocusAdd,buttonFocusMinus );
 
 }
+function logError(context, error) {
+  const errorMessage = {
+    context: context,
+    message: error.message,
+    stack: error.stack
+  };
+  console.error(errorMessage);
 
+  // 发送错误信息到服务器
+  fetch('/api/logError', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify(errorMessage)
+  }).catch(err => {
+    console.error('Error sending log to server:', err);
+  });
+
+  // 或者存储在本地存储中
+  localStorage.setItem('lastError', JSON.stringify(errorMessage));
+}
+
+// 添加全局错误监听器
+window.addEventListener('error', function (event) {
+  logError('Global error', event.error);
+});
+
+window.addEventListener('unhandledrejection', function (event) {
+  logError('Unhandled rejection', event.reason);
+});
 
 renderer.xr.addEventListener('sessionstart', () => {
-  isVRPresenting = true;
-  plane.position.set(0,0,-2);
-  planePts.position.set(0, 1.6, -2.01);
-  plane.updateMatrix();
-  makePanel(); // 调用makePanel函数
-  scene.add(container); // 添加container到场景中
-
-
-  
+  try {
+    isVRPresenting = true;
+    plane.position.set(0, 0, -2);
+    planePts.position.set(0, 1.6, -2.01);
+    plane.updateMatrix();
+    makePanel(); // 调用makePanel函数
+    scene.add(container); // 添加container到场景中
+  } catch (error) {
+    logError('Error during sessionstart', error);
+  }
 });
 
 renderer.xr.addEventListener('sessionend', () => {
-  isVRPresenting = false;
-  scene.position.set(0,0,0);
-  if (container) {
-    scene.remove(container); // 从场景中移除container
+  try {
+    isVRPresenting = false;
+    scene.position.set(0, 0, 0);
+    if (container) {
+      scene.remove(container); // 从场景中移除container
+    }
+  } catch (error) {
+    logError('Error during sessionend', error);
   }
-  
- 
+});
+
+window.addEventListener('load', function() {
+  const lastError = localStorage.getItem('lastError');
+  if (lastError) {
+    const error = JSON.parse(lastError);
+    console.error('Last error before refresh:', error);
+    // 清除本地存储中的错误信息，以避免重复显示
+    localStorage.removeItem('lastError');
+  }
 });
 
 

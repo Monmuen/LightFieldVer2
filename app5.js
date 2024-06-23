@@ -3,9 +3,8 @@ import { OrbitControls } from './vendor/OrbitControls.js';
 import { StereoEffect } from './vendor/StereoEffects.js';
 import { VRButton } from './vendor/VRButton.js';
 import ThreeMeshUI from 'https://cdn.skypack.dev/three-mesh-ui';
-import { XRControllerModelFactory } from './vendor/XRControllerModelFactory.js';
 import VRControl from './vendor/VRControl.js';
-// const controllerModelFactory = new XRControllerModelFactory();
+import { DeviceOrientationControls } from './vendor/DeviceOrientationControls.js';
 
 let isVRPresenting = false;
 let selectState = false;
@@ -50,6 +49,8 @@ controls.enableDamping = true;
 controls.target = new THREE.Vector3(0, 0, 1);
 controls.panSpeed = 2;
 controls.enabled = true; 
+
+const deviceOrientationControls = new DeviceOrientationControls(gyroCamera);
 
 let useDeviceControls = false;
 let fieldTexture;
@@ -108,11 +109,8 @@ stInput.addEventListener('input', () => {
 gyroButton.addEventListener('click', () => {
   useDeviceControls = !useDeviceControls;
   if (useDeviceControls) {
-    if (DeviceMotionEvent.requestPermission) {
-      requestPermission();
-    }
     controls.enabled = false;
-    initDeviceOrientationControls();
+    deviceOrientationControls.enabled = true;
     console.log("Start the device control mode.");
     
     // Hide all controls except gyro-button
@@ -126,30 +124,14 @@ gyroButton.addEventListener('click', () => {
 
   } else {
     controls.enabled = true;
-    disableDeviceOrientationControls();
+    deviceOrientationControls.enabled = false;
     console.log("Close the device control mode.");
-
     // Show all controls
     document.querySelectorAll('.controls > div').forEach(div => {
       div.style.display = 'block';
     });
   }
 });
-
-function requestPermission() {
-  DeviceMotionEvent.requestPermission()
-    .then(function (permissionState) {
-      // granted:user permmited
-      if (permissionState === 'granted') {
-        rotate();
-      } else {
-        gyroButton.innerHTML = 'Please grant the permission.';
-      }
-    }).catch(function (err) {
-      gyroButton.innerHTML = 'Permission request failed.';
-    });
-}
-
 
 backButton.addEventListener('click', () => {
   loadWrap.style.display = 'flex'; // Show load wrap
@@ -169,7 +151,7 @@ backButton.addEventListener('click', () => {
 resetButton.addEventListener('click', () => {
   if(useDeviceControls){
     gyroCamera.position.set(0,0,2);
-    gyroCamera.lookAt(0, 0, 1);
+    deviceOrientationControls.target = new THREE.Vector3(0, 0, 1);
   }
   else{
     camera.position.set(0,0,2);
@@ -310,8 +292,9 @@ function animate() {
   renderer.setAnimationLoop(() => {
     let activeCamera = useDeviceControls ? gyroCamera : camera;
     let intersect;
-   
-    if (!useDeviceControls) {
+    if (useDeviceControls) {
+      deviceOrientationControls.update();
+    } else {
       controls.update();
     }
     // Update ThreeMeshUI
@@ -334,57 +317,6 @@ function animate() {
     }
   });
 }
-
-let initialOrientation = null;
-
-function initDeviceOrientationControls() {
-  window.addEventListener('deviceorientation', handleDeviceOrientation, true);
-}
-
-function disableDeviceOrientationControls() {
-  window.removeEventListener('deviceorientation', handleDeviceOrientation, true);
-  initialOrientation = null;
-}
-
-function handleDeviceOrientation(event) {
-  let alpha = event.alpha ? THREE.MathUtils.degToRad(event.alpha) : 0;
-  const beta = event.beta ? THREE.MathUtils.degToRad(event.beta) : 0;
-  let gamma = event.gamma ? THREE.MathUtils.degToRad(event.gamma) : 0;
-
- 
-  if (initialOrientation === null) {
-    gamma += THREE.MathUtils.degToRad(90); // Correct for initial gamma offset
-    alpha += THREE.MathUtils.degToRad(-90);
-  }
-
-  if (!initialOrientation) {
-    // Set initial orientation based on current device orientation
-    initialOrientation = {
-      alpha: alpha,
-      beta: beta,
-      gamma: gamma
-    };
-  }
-
-  updateCameraOrientation(alpha, beta, gamma);
-}
-
-function updateCameraOrientation(alpha, beta, gamma) {
-  if (!initialOrientation) return;
-
-  // Calculate offsets relative to initial orientation
-  const alphaOffset = alpha - initialOrientation.alpha;
-  const betaOffset = beta - initialOrientation.beta;
-  const gammaOffset = gamma - initialOrientation.gamma;
-
-  // Adjust Euler angles sequence and mapping for PICO 4 device
-  const euler = new THREE.Euler(-gammaOffset, alphaOffset, -betaOffset, 'YXZ');
-  gyroCamera.quaternion.setFromEuler(euler);
-  gyroCamera.updateMatrixWorld(true);
-}
-
-
-
 // VR mode UI
 
 function makePanel() {

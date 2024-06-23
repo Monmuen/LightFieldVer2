@@ -164,11 +164,11 @@ resetButton.addEventListener('click', () => {
 
 
 // 为每个按钮添加事件监听器
-amethystButton.addEventListener('click', () => loadLightField('Amethyst', 768, 1024));
-legoKnightsButton.addEventListener('click', () => loadLightField('LegoKnights', 1024, 1024));
-legoTruckButton.addEventListener('click', () => loadLightField('LegoTruck', 1280, 960));
-theStanfordBunnyButton.addEventListener('click', () => loadLightField('TheStanfordBunny', 1024, 1024));
-tarotCardsAndCrystalBallButton.addEventListener('click', () => loadLightField('TarotCardsAndCrystalBall', 1024, 1024));
+amethystButton.addEventListener('click', () => loadLightField('Amethyst', 384, 512));
+legoKnightsButton.addEventListener('click', () => loadLightField('LegoKnights', 512, 512));
+legoTruckButton.addEventListener('click', () => loadLightField('LegoTruck', 640, 480));
+theStanfordBunnyButton.addEventListener('click', () => loadLightField('TheStanfordBunny', 512, 512));
+tarotCardsAndCrystalBallButton.addEventListener('click', () => loadLightField('TarotCardsAndCrystalBall', 512, 512));
 
 async function loadLightField(sceneName, resolutionX, resolutionY) {
   resX = resolutionX;

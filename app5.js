@@ -303,6 +303,7 @@ function animate() {
     ThreeMeshUI.update();
 
     if (renderer.xr.isPresenting) {
+      isStereoView = true;
       vrControl.setFromController(0, raycaster.ray);
       intersect = raycast(); // 更新intersect变量
       // Position the little white dot at the end of the controller pointing ray

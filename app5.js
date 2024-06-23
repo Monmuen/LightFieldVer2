@@ -225,7 +225,7 @@ async function extractVideo(sceneName) {
   try {
     const video = document.createElement('video');
     const canvas = document.createElement('canvas');
-    const ctx = canvas.getContext('2d',{ willReadFrequently: true });
+    const ctx = canvas.getContext('2d');
     const progressElement = document.getElementById('progress');
     const filesrc = `./${sceneName}/${sceneName}.mp4`;
     canvas.width = resX;

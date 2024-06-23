@@ -40,7 +40,6 @@ document.body.appendChild(VRButton.createButton(renderer));
 
 camera.position.z = 2;
 gyroCamera.position.z = 2;
-gyroCamera.lookAt(0, 0, 1);
 
 const effect = new StereoEffect(renderer);
 
@@ -51,6 +50,9 @@ controls.panSpeed = 2;
 controls.enabled = true; 
 
 const deviceOrientationControls = new DeviceOrientationControls(gyroCamera);
+deviceOrientationControls.target = new THREE.Vector3(0, 0, 1);
+deviceOrientationControls.panSpeed = 2;
+deviceOrientationControls.enabled = false; 
 
 let useDeviceControls = false;
 let fieldTexture;

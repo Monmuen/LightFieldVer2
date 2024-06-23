@@ -225,7 +225,7 @@ async function extractVideo(sceneName) {
   try {
     const video = document.createElement('video');
     const canvas = document.createElement('canvas');
-    const ctx = canvas.getContext('2d');
+    const ctx = canvas.getContext('2d',{ willReadFrequently: true });
     const progressElement = document.getElementById('progress');
     const filesrc = `./${sceneName}/${sceneName}.mp4`;
     canvas.width = resX;
@@ -303,21 +303,17 @@ function animate() {
     ThreeMeshUI.update();
 
     if (renderer.xr.isPresenting) {
-      isStereoView = true;
       vrControl.setFromController(0, raycaster.ray);
       intersect = raycast(); // 更新intersect变量
       // Position the little white dot at the end of the controller pointing ray
       if (intersect) vrControl.setPointerAt(0, intersect.point);
       updateButtons(intersect); // 传递intersect到updateButtons
     }
-
-    if (isStereoView) {
       effect.setSize(window.innerWidth, window.innerHeight);
       effect.render(scene, activeCamera);
-    } else {
-      renderer.setSize(width, height);
-      renderer.render(scene, activeCamera);
-    }
+  
+      
+   
   });
 }
 // VR mode UI

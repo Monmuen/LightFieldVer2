@@ -614,28 +614,26 @@ window.addEventListener('unhandledrejection', function (event) {
 });
 
 renderer.xr.addEventListener('sessionstart', () => {
-  try {
-    isVRPresenting = true;
-    plane.position.set(0, 0, -2);
-    planePts.position.set(0, 0, -2.01);
-    plane.updateMatrix();
-    makePanel(); // 调用makePanel函数
-    scene.add(container); // 添加container到场景中
-  } catch (error) {
-    logError('Error during sessionstart', error);
-  }
+  isVRPresenting = true;
+  plane.position.set(0,0,-2);
+  planePts.position.set(0, 0, -2.01);
+  plane.updateMatrix();
+  makePanel(); // 调用makePanel函数
+  scene.add(container); // 添加container到场景中
+
+  // 禁用 StereoEffect
+  isStereoView = false;
 });
 
 renderer.xr.addEventListener('sessionend', () => {
-  try {
-    isVRPresenting = false;
-    scene.position.set(0, 0, 0);
-    if (container) {
-      scene.remove(container); // 从场景中移除container
-    }
-  } catch (error) {
-    logError('Error during sessionend', error);
+  isVRPresenting = false;
+  scene.position.set(0,0,0);
+  if (container) {
+    scene.remove(container); // 从场景中移除container
   }
+  
+  // 恢复 StereoEffect
+  isStereoView = true;
 });
 
 window.addEventListener('load', function() {

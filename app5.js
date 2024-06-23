@@ -303,17 +303,21 @@ function animate() {
     ThreeMeshUI.update();
 
     if (renderer.xr.isPresenting) {
+      isStereoView = false;
       vrControl.setFromController(0, raycaster.ray);
       intersect = raycast(); // 更新intersect变量
       // Position the little white dot at the end of the controller pointing ray
       if (intersect) vrControl.setPointerAt(0, intersect.point);
       updateButtons(intersect); // 传递intersect到updateButtons
     }
+
+    if (isStereoView) {
       effect.setSize(window.innerWidth, window.innerHeight);
       effect.render(scene, activeCamera);
-  
-      
-   
+    } else {
+      renderer.setSize(width, height);
+      renderer.render(scene, activeCamera);
+    }
   });
 }
 // VR mode UI

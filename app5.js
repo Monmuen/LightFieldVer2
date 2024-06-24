@@ -62,6 +62,9 @@ const camsY = 17;
 const cameraGap = 0.08;
 let aperture = Number(apertureInput.value);
 let focus = Number(focusInput.value);
+let apertureMax = 10;
+let focusMin = -0.01;
+let focusMax = 0.01;
 let isStereoView = true;
 const vConsole = new VConsole();
 

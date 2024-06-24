@@ -1,7 +1,16 @@
 {
   "headers": [
     {
-      "source": "/LegoKnights/(.*).mp4",
+      "source": "/(.*).(png|jpg|jpeg|gif|webp)",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=31536000, immutable"
+        }
+      ]
+    },
+    {
+      "source": "/(.*).mp4",
       "headers": [
         {
           "key": "Content-Type",

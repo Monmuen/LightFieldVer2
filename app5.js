@@ -426,7 +426,8 @@ function makePanel() {
 		state: 'selected',
 		attributes: selectedAttributes,
 		onSet: () => {
-       aperture += 0.1;
+       aperture += 0.5;
+       aperture = Math.min(aperture,apertureMax);
        planeMat.uniforms.aperture.value = aperture;
 			//
 		}
@@ -441,9 +442,9 @@ function makePanel() {
 		attributes: selectedAttributes,
 		onSet: () => {
 
-			aperture = Math.max(0,aperture - 0.1);
-       planeMat.uniforms.aperture.value = aperture;
-
+			aperture -= 0.5;
+			aperture = Math.max(0,aperture);
+      planeMat.uniforms.aperture.value = aperture;
 		}
 	} );
 	buttonApertureMinus.setupState( hoveredStateAttributes );
@@ -455,7 +456,8 @@ function makePanel() {
 		attributes: selectedAttributes,
 		onSet: () => {
 
-			focus += 0.01;
+			focus += 0.001;
+      focus = Math.min(focusMax,focus);
       planeMat.uniforms.focus.value = focus;
 
 		}
@@ -470,8 +472,10 @@ function makePanel() {
 		attributes: selectedAttributes,
 		onSet: () => {
 
-			focus = Math.max(-(focus - 0.01), focus - 0.01);
+			focus -= 0.001;
+			focus = Math.max(focusMin, focus);
       planeMat.uniforms.focus.value = focus;
+
 
 		}
 	} );

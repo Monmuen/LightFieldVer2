@@ -6,9 +6,7 @@ import ThreeMeshUI from 'https://cdn.skypack.dev/three-mesh-ui';
 import VRControl from './vendor/VRControl.js';
 import { DeviceOrientationControls } from './vendor/DeviceOrientationControls.js';
 
-let isVRPresenting = false;
-let selectState = false;
-let container;
+// 非VR模式下UI
 const apertureInput = document.querySelector('#aperture');
 const focusInput = document.querySelector('#focus');
 const stInput = document.querySelector('#stplane');
@@ -19,13 +17,14 @@ const progressContainer = document.querySelector('#progress-container');
 const backButton = document.querySelector('#back-button');
 const resetButton = document.querySelector('#reset-button')
 
+// 加载页面按钮
 const amethystButton = document.querySelector('#amethyst');
 const legoKnightsButton = document.querySelector('#legoKnights');
 const legoTruckButton = document.querySelector('#legoTruck');
 const theStanfordBunnyButton = document.querySelector('#theStanfordBunny');
 const tarotCardsAndCrystalBallButton = document.querySelector('#tarotCardsAndCrystalBall');
 
-
+// 创建场景、相机等
 const scene = new THREE.Scene();
 let width = window.innerWidth;
 let height = window.innerHeight;
@@ -33,57 +32,58 @@ const camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 100);
 const gyroCamera = new THREE.PerspectiveCamera(45, width / height, 0.1, 100);
 const renderer = new THREE.WebGLRenderer({ antialias: true });
 let fragmentShader, vertexShader;
-renderer.xr.enabled = true;
 renderer.setSize(width, height);
 document.body.appendChild(renderer.domElement);
 document.body.appendChild(VRButton.createButton(renderer));
 
-camera.position.z = 2;
-gyroCamera.position.z = 2;
-
+// 启用StereoEffect
+let isStereoView = true;
 const effect = new StereoEffect(renderer);
 
+// 普通相机相关
+camera.position.z = 2;
 const controls = new OrbitControls(camera, renderer.domElement);
 controls.enableDamping = true;
 controls.target = new THREE.Vector3(0, 0, 1);
 controls.panSpeed = 2;
 controls.enabled = true; 
 
+//陀螺仪相机相关
+let useDeviceControls = false;
+gyroCamera.position.z = 2;
 const deviceOrientationControls = new DeviceOrientationControls(gyroCamera);
 deviceOrientationControls.target = new THREE.Vector3(0, 0, 1);
 deviceOrientationControls.panSpeed = 2;
 deviceOrientationControls.enabled = false; 
 
-let useDeviceControls = false;
+
+//纹理、平面相关：分辨率、相机数量、焦距、光圈，相机间的距离
 let fieldTexture;
 let plane, planeMat, planePts;
 const camsX = 17;
 const camsY = 17;
+let resX;
+let resY;
 const cameraGap = 0.08;
 let aperture = Number(apertureInput.value);
 let focus = Number(focusInput.value);
 let apertureMax = 10;
 let focusMin = -0.01;
 let focusMax = 0.01;
-let isStereoView = true;
+
+// 启用VConsole
 const vConsole = new VConsole();
 
-let resX;
-let resY;
+// VR部分相关：射线、控制器、UI
+renderer.xr.enabled = true;
 const raycaster = new THREE.Raycaster();
 let vrControl;
 const objsToTest = [];
+let isVRPresenting = false;
+let selectState = false;
+let container;
 
-vrControl = VRControl( renderer, camera, scene );
-
-scene.add( vrControl.controllerGrips[ 0 ], vrControl.controllers[ 0 ] );
-	vrControl.controllers[ 0 ].addEventListener( 'selectstart', () => {
-		selectState = true;
-	} );
-	vrControl.controllers[ 0 ].addEventListener( 'selectend', () => {
-		selectState = false;
-	} );
-
+// 尺寸适应
 window.addEventListener('resize', () => {
   if (!isVRPresenting) {
   width = window.innerWidth;
@@ -97,28 +97,28 @@ window.addEventListener('resize', () => {
   }
 });
 
-apertureInput.addEventListener('input', e => {
+// 非VR模式下UI控制
+apertureInput.addEventListener('input', e => { // 光圈按钮
   aperture = Number(apertureInput.value);
   planeMat.uniforms.aperture.value = aperture;
 });
 
-focusInput.addEventListener('input', e => {
+focusInput.addEventListener('input', e => { // 焦距按钮
   focus = Number(focusInput.value);
   planeMat.uniforms.focus.value = focus;
 });
 
-stInput.addEventListener('input', () => {
+stInput.addEventListener('input', () => { // 点阵图开启checkbox
   planePts.visible = stInput.checked;
 });
 
-gyroButton.addEventListener('click', () => {
+gyroButton.addEventListener('click', () => { // 陀螺仪相机按钮
   useDeviceControls = !useDeviceControls;
   if (useDeviceControls) {
     controls.enabled = false;
     deviceOrientationControls.enabled = true;
     console.log("Start the device control mode.");
-    
-    // Hide all controls except gyro-button
+    // 陀螺仪模式下隐藏其他UI
     document.querySelectorAll('.controls > div').forEach(div => {
       if (!div.contains(gyroButton)) {
         div.style.display = 'none';
@@ -126,34 +126,33 @@ gyroButton.addEventListener('click', () => {
         div.style.display = 'block';
       }
     });
-
   } else {
     controls.enabled = true;
     deviceOrientationControls.enabled = false;
     console.log("Close the device control mode.");
-    // Show all controls
+    // 关闭陀螺仪模式后显示其他UI
     document.querySelectorAll('.controls > div').forEach(div => {
       div.style.display = 'block';
     });
   }
 });
 
-backButton.addEventListener('click', () => {
-  loadWrap.style.display = 'flex'; // Show load wrap
-  controlsDiv.style.display = 'none'; // Hide controls
+backButton.addEventListener('click', () => { // 返回按钮
+  loadWrap.style.display = 'flex';
+  controlsDiv.style.display = 'none';
   progressContainer.style.display = 'none'; 
-  scene.remove(plane); // Remove the plane from the scene
+  scene.remove(plane);
   scene.remove(planePts);
   if (planeMat) {
-    planeMat.dispose(); // Dispose of the plane material
+    planeMat.dispose();
   }
   if (fieldTexture) {
-    fieldTexture.dispose(); // Dispose of the field texture
+    fieldTexture.dispose();
   }
   console.log('Returned to main menu.');
 });
 
-resetButton.addEventListener('click', () => {
+resetButton.addEventListener('click', () => { // 重制位置按钮
   if(useDeviceControls){
     gyroCamera.position.set(0,0,2);
     deviceOrientationControls.target = new THREE.Vector3(0, 0, 1);
@@ -166,7 +165,7 @@ resetButton.addEventListener('click', () => {
 });
 
 
-// 为每个按钮添加事件监听器
+// 加载光场数据 传入名称与分辨率
 amethystButton.addEventListener('click', () => loadLightField('Amethyst', 384, 512));
 legoKnightsButton.addEventListener('click', () => loadLightField('LegoKnights', 512, 512));
 legoTruckButton.addEventListener('click', () => loadLightField('LegoTruck', 640, 480));
@@ -176,9 +175,8 @@ tarotCardsAndCrystalBallButton.addEventListener('click', () => loadLightField('T
 async function loadLightField(sceneName, resolutionX, resolutionY) {
   resX = resolutionX;
   resY = resolutionY;
-
-  controlsDiv.style.display = 'none'; // Hide controls
-  progressContainer.style.display = 'block'; // Show progress
+  controlsDiv.style.display = 'none';
+  progressContainer.style.display = 'block';
   await loadShaders();
   initPlaneMaterial();
   await extractVideo(sceneName);
@@ -186,6 +184,7 @@ async function loadLightField(sceneName, resolutionX, resolutionY) {
   animate();
 }
 
+// 加载着色器代码
 async function loadShaders() {
   const [vertexShaderRes, fragmentShaderRes] = await Promise.all([
     fetch('./vertex.glsl'),
@@ -194,6 +193,8 @@ async function loadShaders() {
   vertexShader = await vertexShaderRes.text();
   fragmentShader = await fragmentShaderRes.text();
 }
+
+// 初始化平面材质
 function initPlaneMaterial() {
   planeMat = new THREE.ShaderMaterial({
     uniforms: {
@@ -201,7 +202,6 @@ function initPlaneMaterial() {
       camArraySize: new THREE.Uniform(new THREE.Vector2(camsX, camsY)),
       aperture: { value: aperture },
       focus: { value: focus },
-     // imageAspect: { value: new THREE.Vector2(resX / resY, 1.0) }
       imageAspect: { value: resX / resY }
     },
     vertexShader,
@@ -210,20 +210,27 @@ function initPlaneMaterial() {
   console.log("res:",resX,resY);
 }
 
+// 加载平面
 function loadPlane() {
   const aspect = resX / resY;
+
+  // 点阵
   const planeGeo = new THREE.PlaneGeometry(camsX * cameraGap * 8 * aspect, camsY * cameraGap * 8, camsX, camsY);
-  const planePtsGeo = new THREE.PlaneGeometry(camsX * cameraGap * 4 * aspect, camsY * cameraGap * 4, camsX, camsY);
   const ptsMat = new THREE.PointsMaterial({ size: 0.01, color: 0xeeccff });
   planePts = new THREE.Points(planePtsGeo, ptsMat);
-  planePts.position.set(0, 0, -0.01);
   planePts.visible = stInput.checked;
+  planePts.position.set(0, 0, -0.01);
+
+  // 平面
+  const planePtsGeo = new THREE.PlaneGeometry(camsX * cameraGap * 4 * aspect, camsY * cameraGap * 4, camsX, camsY);
   plane = new THREE.Mesh(planeGeo, planeMat);
+ 
   scene.add(planePts);
   scene.add(plane);
   console.log('Loaded plane');
 }
 
+// 处理光场数据
 async function extractVideo(sceneName) {
   try {
     const video = document.createElement('video');
@@ -237,24 +244,25 @@ async function extractVideo(sceneName) {
 
     let seekResolve;
     let count = 0;
-    let offset = 0;
+    let offset = 0; // 用于跟踪当前在allBuffer中写入位置
     const allBuffer = new Uint8Array(resX * resY * 4 * camsX * camsY);
 
+    // 将当前帧绘制到画布，并提取数据
     const getBufferFromVideo = () => {
       ctx.drawImage(video, 0, 0, resX, resY);
       const imgData = ctx.getImageData(0, 0, resX, resY);
-      allBuffer.set(imgData.data, offset);
-      offset += imgData.data.byteLength;
+      allBuffer.set(imgData.data, offset); // 将提取到的图像数据存储到缓冲区中，从 offset 位置开始
+      offset += imgData.data.byteLength; // 更新 offset，使其指向下一个可用位置，以便下一个视频帧的数据可以正确存储
       count++;
       progressElement.textContent = `Loaded ${Math.round(100 * count / (camsX * camsY))}%`;
     };
 
+    // 逐帧提取视频数据
     const fetchFrames = async () => {
       let currentTime = 0;
-
       while (count < camsX * camsY) {
         getBufferFromVideo();
-        currentTime += 0.0333;
+        currentTime += 0.0333; // 每秒30帧的间隔
         video.currentTime = currentTime;
         await new Promise(res => (seekResolve = res));
       }
@@ -276,11 +284,11 @@ async function extractVideo(sceneName) {
     video.addEventListener('loadeddata', async () => {
       await fetchFrames();
       console.log('loaded data');
-      controlsDiv.style.display = 'block'; // Show controls
-      loadWrap.style.display = 'none'; // Hide load wrap 
+      controlsDiv.style.display = 'block';
+      loadWrap.style.display = 'none';
     });
 
-    // Fetch video file and cache it as a blob URL
+    // 先将视频Load到本地
     const response = await fetch(filesrc);
     const blob = await response.blob();
     const blobURL = URL.createObjectURL(blob);
@@ -293,6 +301,8 @@ async function extractVideo(sceneName) {
     alert('An error occurred while extracting video.');
   }
 }
+
+// 动画循环
 function animate() {
   renderer.setAnimationLoop(() => {
     let activeCamera = useDeviceControls ? gyroCamera : camera;
@@ -302,7 +312,7 @@ function animate() {
     } else {
       controls.update();
     }
-    // Update ThreeMeshUI
+    // 更新VR模式下UI
     ThreeMeshUI.update();
 
     if (renderer.xr.isPresenting) {
@@ -322,8 +332,19 @@ function animate() {
     }
   });
 }
-// VR mode UI
 
+// VR控制器部分
+vrControl = VRControl( renderer, camera, scene );
+scene.add( vrControl.controllerGrips[ 0 ], vrControl.controllers[ 0 ] );
+	vrControl.controllers[ 0 ].addEventListener( 'selectstart', () => {
+		selectState = true;
+	} );
+	vrControl.controllers[ 0 ].addEventListener( 'selectend', () => {
+		selectState = false;
+	} );
+
+
+// VR模式的UI
 function makePanel() {
 
 	// Container block, in which we put the two buttons.
@@ -347,10 +368,6 @@ function makePanel() {
 	scene.add( container );
 
 	// BUTTONS
-
-	// We start by creating objects containing options that we will use with the two buttons,
-	// in order to write less code.
-
 	const buttonOptions = {
 		width: 0.4,
 		height: 0.15,
@@ -397,21 +414,18 @@ function makePanel() {
 	buttonApertureAdd.add(
 		new ThreeMeshUI.Text( { content: 'Aperture+' } )
 	);
-
 	buttonApertureMinus.add(
 		new ThreeMeshUI.Text( { content: 'Aperture-' } )
 	);
   buttonFocusAdd.add(
 		new ThreeMeshUI.Text( { content: 'Focus+' } )
 	);
-
 	buttonFocusMinus.add(
 		new ThreeMeshUI.Text( { content: 'Focus-' } )
 	);
   buttonCameraAdd.add(
 		new ThreeMeshUI.Text( { content: 'CameraZ+' } )
 	);
-
 	buttonCameraMinus.add(
 		new ThreeMeshUI.Text( { content: 'CameraZ-' } )
 	);
@@ -429,10 +443,9 @@ function makePanel() {
 		state: 'selected',
 		attributes: selectedAttributes,
 		onSet: () => {
-       aperture += 0.5;
+       aperture += 0.1;
        aperture = Math.min(aperture,apertureMax);
        planeMat.uniforms.aperture.value = aperture;
-			//
 		}
 	} );
 	buttonApertureAdd.setupState( hoveredStateAttributes );
@@ -444,8 +457,7 @@ function makePanel() {
 		state: 'selected',
 		attributes: selectedAttributes,
 		onSet: () => {
-
-			aperture -= 0.5;
+			aperture -= 0.1;
 			aperture = Math.max(0,aperture);
       planeMat.uniforms.aperture.value = aperture;
 		}
@@ -454,15 +466,14 @@ function makePanel() {
 	buttonApertureMinus.setupState( idleStateAttributes );
 
 	//
+
 	buttonFocusAdd.setupState( {
 		state: 'selected',
 		attributes: selectedAttributes,
 		onSet: () => {
-
 			focus += 0.001;
       focus = Math.min(focusMax,focus);
       planeMat.uniforms.focus.value = focus;
-
 		}
 	} );
 	buttonFocusMinus.setupState( hoveredStateAttributes );
@@ -474,12 +485,9 @@ function makePanel() {
 		state: 'selected',
 		attributes: selectedAttributes,
 		onSet: () => {
-
 			focus -= 0.001;
 			focus = Math.max(focusMin, focus);
       planeMat.uniforms.focus.value = focus;
-
-
 		}
 	} );
 	buttonFocusAdd.setupState( hoveredStateAttributes );
@@ -491,9 +499,7 @@ function makePanel() {
 		state: 'selected',
 		attributes: selectedAttributes,
 		onSet: () => {
-
 			plane.position.z += 0.1;
-
 		}
 	} );
 	buttonCameraAdd.setupState( hoveredStateAttributes );
@@ -505,9 +511,7 @@ function makePanel() {
 		state: 'selected',
 		attributes: selectedAttributes,
 		onSet: () => {
-
 			plane.position.z -= 0.1;
-
 		}
 	} );
 	buttonCameraMinus.setupState( hoveredStateAttributes );
@@ -519,6 +523,64 @@ function makePanel() {
 	objsToTest.push( buttonCameraAdd,buttonApertureAdd,buttonApertureMinus,buttonCameraMinus,buttonFocusAdd,buttonFocusMinus );
 
 }
+
+// 更新按钮
+function updateButtons(intersect){
+  if ( intersect && intersect.object.isUI ) {
+		if ( selectState ) {
+			// Component.setState internally call component.set with the options you defined in component.setupState
+			intersect.object.setState( 'selected' );
+		} else {
+			// Component.setState internally call component.set with the options you defined in component.setupState
+			intersect.object.setState( 'hovered' );
+		}
+	}
+	// Update non-targeted buttons state
+	objsToTest.forEach( ( obj ) => {
+		if ( ( !intersect || obj !== intersect.object ) && obj.isUI ) {
+			// Component.setState internally call component.set with the options you defined in component.setupState
+			obj.setState( 'idle' );
+		}
+	});
+}
+
+// 进入VR模式后的一些设置
+renderer.xr.addEventListener('sessionstart', () => {
+  isVRPresenting = true;
+  plane.position.set(0,0,-2);
+  planePts.position.set(0, 0, -2.01); // 若使用模拟器 就将y坐标重置为1.6
+  plane.updateMatrix();
+  makePanel(); 
+  scene.add(container); 
+  // VR模式下禁用 StereoEffect
+  isStereoView = false;
+});
+
+renderer.xr.addEventListener('sessionend', () => {
+  isVRPresenting = false;
+  scene.position.set(0,0,0);
+  if (container) {
+    scene.remove(container);
+  }
+  // 恢复 StereoEffect
+  isStereoView = true;
+});
+
+// 射线部分
+function raycast() {
+	return objsToTest.reduce( ( closestIntersection, obj ) => {
+		const intersection = raycaster.intersectObject( obj, true );
+		if ( !intersection[ 0 ] ) return closestIntersection;
+		if ( !closestIntersection || intersection[ 0 ].distance < closestIntersection.distance ) {
+			intersection[ 0 ].object = obj;
+			return intersection[ 0 ];
+		}
+		return closestIntersection;
+	}, null );
+}
+
+// 错误捕获部分
+// 记录强制刷新之前的Bug
 function logError(context, error) {
   const errorMessage = {
     context: context,
@@ -526,9 +588,6 @@ function logError(context, error) {
     stack: error.stack
   };
   console.error(errorMessage);
-
-  // 弹出错误信息
-  alert(`Error occurred: ${context}\n${error.message}\n${error.stack}`);
 
   // 发送错误信息到服务器
   fetch('/logError', {
@@ -554,29 +613,6 @@ window.addEventListener('unhandledrejection', function (event) {
   logError('Unhandled rejection', event.reason);
 });
 
-renderer.xr.addEventListener('sessionstart', () => {
-  isVRPresenting = true;
-  plane.position.set(0,0,-2);
-  planePts.position.set(0, 0, -2.01);
-  plane.updateMatrix();
-  makePanel(); // 调用makePanel函数
-  scene.add(container); // 添加container到场景中
-
-  // 禁用 StereoEffect
-  isStereoView = false;
-});
-
-renderer.xr.addEventListener('sessionend', () => {
-  isVRPresenting = false;
-  scene.position.set(0,0,0);
-  if (container) {
-    scene.remove(container); // 从场景中移除container
-  }
-  
-  // 恢复 StereoEffect
-  isStereoView = true;
-});
-
 window.addEventListener('load', function() {
   const lastError = localStorage.getItem('lastError');
   if (lastError) {
@@ -592,47 +628,5 @@ window.addEventListener('beforeunload', function(event) {
   if (lastError) {
     // 提示用户确认离开页面
     event.preventDefault();
-    event.returnValue = ''; // 标准兼容方式
   }
 });
-
-function raycast() {
-
-	return objsToTest.reduce( ( closestIntersection, obj ) => {
-
-		const intersection = raycaster.intersectObject( obj, true );
-
-		if ( !intersection[ 0 ] ) return closestIntersection;
-
-		if ( !closestIntersection || intersection[ 0 ].distance < closestIntersection.distance ) {
-
-			intersection[ 0 ].object = obj;
-
-			return intersection[ 0 ];
-
-		}
-
-		return closestIntersection;
-
-	}, null );
-
-}
-function updateButtons(intersect){
-
-  if ( intersect && intersect.object.isUI ) {
-		if ( selectState ) {
-			// Component.setState internally call component.set with the options you defined in component.setupState
-			intersect.object.setState( 'selected' );
-		} else {
-			// Component.setState internally call component.set with the options you defined in component.setupState
-			intersect.object.setState( 'hovered' );
-		}
-	}
-	// Update non-targeted buttons state
-	objsToTest.forEach( ( obj ) => {
-		if ( ( !intersect || obj !== intersect.object ) && obj.isUI ) {
-			// Component.setState internally call component.set with the options you defined in component.setupState
-			obj.setState( 'idle' );
-		}
-	});
-}

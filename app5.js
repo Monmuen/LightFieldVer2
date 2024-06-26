@@ -215,14 +215,14 @@ function loadPlane() {
   const aspect = resX / resY;
 
   // 点阵
-  const planeGeo = new THREE.PlaneGeometry(camsX * cameraGap * 8 * aspect, camsY * cameraGap * 8, camsX, camsY);
+  const planePtsGeo = new THREE.PlaneGeometry(camsX * cameraGap * 4 * aspect, camsY * cameraGap * 4, camsX, camsY);
   const ptsMat = new THREE.PointsMaterial({ size: 0.01, color: 0xeeccff });
   planePts = new THREE.Points(planePtsGeo, ptsMat);
   planePts.visible = stInput.checked;
   planePts.position.set(0, 0, -0.01);
 
   // 平面
-  const planePtsGeo = new THREE.PlaneGeometry(camsX * cameraGap * 4 * aspect, camsY * cameraGap * 4, camsX, camsY);
+  const planeGeo = new THREE.PlaneGeometry(camsX * cameraGap * 8 * aspect, camsY * cameraGap * 8, camsX, camsY);
   plane = new THREE.Mesh(planeGeo, planeMat);
  
   scene.add(planePts);
